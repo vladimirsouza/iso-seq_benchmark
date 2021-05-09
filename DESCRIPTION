@@ -1,11 +1,19 @@
 Package: variantCallingFromIsoSeq
 Type: Package
-Title: What the Package Does (Title Case)
+Title: Figure out how to call varaints from Iso-Seq data
 Version: 0.1.0
-Author: Who wrote it
-Maintainer: The package maintainer <yourself@somewhere.net>
-Description: More about what it does (maybe more than one line)
-    Use four spaces when indenting paragraphs within the Description.
-License: What license is it under?
+Author: c( person("Vladimir", "Souza", role=c("aut", "cre"), email="vladimir.souza@mls.uzh.ch"),
+           person("Mark", "Robinson", role = "aut", email = "mark.robinson@imls.uzh.ch"),
+           person("Gloria", "Sheynkman", role = "aut", email = "gs9yr@virginia.edu"),
+           person("Elizabeth", "Tseng", role = "aut", email = "etseng@pacificbiosciences.com") )
+Maintainer: Vladimir Souza <vladimir.souza@mls.uzh.ch>
+Description: Generate ground-truth VCF files from short-read data to validate different variant callers on Iso-Seq data.
+Depends: R (>= 4.0.5)
+Imports:
+  dplyr (>= 1.0.3)
+License: GPL-2
 Encoding: UTF-8
 LazyData: true
+RoxygenNote: 7.1.1
+URL: https://github.com/vladimirsouza/variantCallingFromIsoSeq
+BugReports: https://github.com/vladimirsouza/variantCallingFromIsoSeq/issues
