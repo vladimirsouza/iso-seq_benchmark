@@ -12,5 +12,5 @@
 #'
 #' Each row is a variant called by at least one of the methods. For column
 #' descriptions, see \url{https://docs.google.com/document/d/1REIXRS6_oGEjTtlokwZ0pBQmoZcEE7L6Nkq-nCMoI5c/edit}
-"extractbams_output"
+"vlad_master_table_v3"
 
