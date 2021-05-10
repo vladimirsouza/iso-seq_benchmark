@@ -8,7 +8,7 @@ Author: c( person("Vladimir", "Souza", role=c("aut", "cre"), email="vladimir.sou
            person("Elizabeth", "Tseng", role = "aut", email = "etseng@pacificbiosciences.com") )
 Maintainer: Vladimir Souza <vladimir.souza@mls.uzh.ch>
 Description: Use ground-truth VCF files genereted from short-read data to compare and validate VCF files generated from different variant callers on Iso-Seq data.
-Depends: R (>= 4.0.5)
+Depends: R (>= 4.0)
 Imports:
   dplyr (>= 1.0.3)
 License: GPL-2
