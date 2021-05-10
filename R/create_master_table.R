@@ -5,10 +5,11 @@
 #' information form VCF files generated from different methods and compare to
 #' ground-truth VCF files.
 #'
-#' @return
-#' @export
+#' @param ... VCF file addresses.
+#' @param method_names Vector of strings of same length of number of input VCF files.
 #'
-#' @examples
+#' @return A data.frame.
+#' @export
 initiate_master_table <- function(..., method_names) {
   ### load PASS variants
   vcf_file_list <- list(...)
@@ -79,10 +80,8 @@ initiate_master_table <- function(..., method_names) {
 #' @param input_bam The input BAM file to extract splice site positions from.
 #' @param threads Number of threads.
 #'
-#' @return Data.frame in which each row is a splice-site position.
+#' @return A data.frame in which each row is a splice-site position.
 #' @export
-#'
-#' @examples
 get_splice_sites_information <- function(input_bam, threads){
   ss <- extractAlignmentRangesOnReference( cigar(input_bam), start(input_bam),  )
 
