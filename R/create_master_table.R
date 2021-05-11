@@ -19,6 +19,10 @@ initiate_master_table <- function(..., method_names) {
   ### load PASS variants
   vcf_file_list <- list(...)
 
+  if( length(vcf_file_list) != length(method_names) ) {
+    stop("Length of method_names must be the same as the number of input VCF files.")
+  }
+
   vcfs <- lapply(vcf_file_list, function(vcf_file) {
     vcf <- read.table(vcf_file)
     vcf[ vcf[[7]] == "PASS", ]
