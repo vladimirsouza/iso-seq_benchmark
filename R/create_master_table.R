@@ -9,6 +9,11 @@
 #' @param method_names Vector of strings of same length of number of input VCF files.
 #'
 #' @return A data.frame.
+#'
+#' @import dplyr
+#' @importFrom utils read.table
+#' @importFrom stats setNames
+#'
 #' @export
 initiate_master_table <- function(..., method_names) {
   ### load PASS variants
@@ -62,11 +67,7 @@ initiate_master_table <- function(..., method_names) {
 
 
 
-
-
-
 # Helpers ------------------------------------------------------------------------
-
 
 
 #' Get all splice sites positions of a BAM files
@@ -81,6 +82,12 @@ initiate_master_table <- function(..., method_names) {
 #' @param threads Number of threads.
 #'
 #' @return A data.frame in which each row is a splice-site position.
+#'
+#' @import GenomicAlignments
+#' @import dplyr
+#' @importFrom BiocParallel MulticoreParam bpmapply
+#' @importFrom utils head
+#'
 #' @export
 get_splice_sites_information <- function(input_bam, threads){
   ss <- extractAlignmentRangesOnReference( cigar(input_bam), start(input_bam),  )
