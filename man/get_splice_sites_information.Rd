@@ -12,10 +12,13 @@ get_splice_sites_information(input_bam, threads)
 \item{threads}{Number of threads.}
 }
 \value{
-
+A data.frame in which each row is a splice-site position.
 }
 \description{
 Get the position of all splice sites in a BAM file and the number of reads that
 support each one of them. Besides that, indicate whether the splice site is
 acceptor or donor site.
+}
+\details{
+This function may take several hours to run.
 }

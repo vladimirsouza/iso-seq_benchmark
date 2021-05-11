@@ -4,10 +4,15 @@
 \alias{initiate_master_table}
 \title{Initiate master table}
 \usage{
-initiate_master_table()
+initiate_master_table(..., method_names)
+}
+\arguments{
+\item{...}{VCF file addresses.}
+
+\item{method_names}{Vector of strings of same length of number of input VCF files.}
 }
 \value{
-
+A data.frame.
 }
 \description{
 This function create the first columns of the master table. Those columns indicate
