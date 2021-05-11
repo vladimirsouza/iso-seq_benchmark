@@ -53,6 +53,7 @@ initiate_master_table <- function(..., method_names) {
     })
 
     data.frame(chrom=vcfs_chrmI[[1]] [[1]] [1],
+               pos=all_positions,
                in_chrmI_methodJ,
                dv_chrmI_methodJ)
   })
@@ -60,17 +61,10 @@ initiate_master_table <- function(..., method_names) {
 
   method_names <- c( paste0("in_", method_names),
                      paste0("dp_", method_names) )
-  names(master_table)[-1] <- method_names
+  names(master_table)[-(1:2)] <- method_names
 
   master_table
 }
-
-
-
-
-
-
-
 
 
 
