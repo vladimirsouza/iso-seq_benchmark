@@ -2,7 +2,7 @@
 % Please edit documentation in R/create_master_table.R
 \name{add_splice_site_info_to_master_table}
 \alias{add_splice_site_info_to_master_table}
-\title{Add columns about spice sites the a master table}
+\title{Add columns about spice sites to a master table}
 \usage{
 add_splice_site_info_to_master_table(
   input_table,
@@ -23,5 +23,5 @@ a variant near a splice site.}
 A data.frame.
 }
 \description{
-Add columns about spice sites the a master table
+Add columns about spice sites to a master table
 }

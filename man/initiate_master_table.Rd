@@ -9,7 +9,10 @@ initiate_master_table(..., method_names)
 \arguments{
 \item{...}{VCF file addresses.}
 
-\item{method_names}{Vector of strings of same length of number of input VCF files.}
+\item{method_names}{Vector of strings in which each element is the identification
+(name) of each input VCF files. The order of these elements must be in accordance
+with the order of the input files, and its length must be the same as the number
+of input VCF files.}
 }
 \value{
 A data.frame.

@@ -6,7 +6,10 @@
 #' ground-truth VCF files.
 #'
 #' @param ... VCF file addresses.
-#' @param method_names Vector of strings of same length of number of input VCF files.
+#' @param method_names Vector of strings in which each element is the identification
+#'   (name) of each input VCF files. The order of these elements must be in accordance
+#'   with the order of the input files, and its length must be the same as the number
+#'   of input VCF files.
 #'
 #' @return A data.frame.
 #'
@@ -126,7 +129,7 @@ get_splice_sites_info <- function(input_bam, threads){
 
 
 
-#' Add columns about spice sites the a master table
+#' Add columns about spice sites to a master table
 #'
 #'
 #'
@@ -138,7 +141,10 @@ get_splice_sites_info <- function(input_bam, threads){
 #'
 #' @return A data.frame.
 #'
-#' @import GenomicAlignments
+#' @importFrom IRanges IRanges
+#' @importFrom IRanges resize
+#' @importFrom S4Vectors queryHits
+#' @importFrom S4Vectors subjectHits
 #' @import dplyr
 #'
 #' @export
