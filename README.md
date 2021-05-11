@@ -4,18 +4,13 @@
 # variantCallingFromIsoSeq
 
 <!-- badges: start -->
-
 <!-- badges: end -->
 
-Use ground-truth VCF files genereted from short-read data to compare and
+Use ground-truth VCF files generated from short-read data to compare and
 validate VCF files generated from different variant callers on Iso-Seq
 data.
 
 ## Installation
 
 To install it use
-`devtools::install_github("vladimirsouza/variantCallingFromIsoSeq")`.
-
-## Example
-
-Show some example.
+`devtools::install_github("vladimirsouza/variantCallingFromIsoSeq@main")`.
