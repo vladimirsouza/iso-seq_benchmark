@@ -67,6 +67,23 @@ initiate_master_table <- function(..., method_names) {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # Helpers ------------------------------------------------------------------------
 
 
@@ -89,7 +106,7 @@ initiate_master_table <- function(..., method_names) {
 #' @importFrom utils head
 #'
 #' @export
-get_splice_sites_information <- function(input_bam, threads){
+get_splice_sites_info <- function(input_bam, threads){
   ss <- extractAlignmentRangesOnReference( cigar(input_bam), start(input_bam),  )
 
   # add chromossome name
