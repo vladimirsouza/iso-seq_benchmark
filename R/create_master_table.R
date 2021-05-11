@@ -6,7 +6,10 @@
 #' ground-truth VCF files.
 #'
 #' @param ... VCF file addresses.
-#' @param method_names Vector of strings of same length of number of input VCF files.
+#' @param method_names Vector of strings in which each element is the identification
+#'   (name) of each input VCF files. The order of these elements must be accordance
+#'   with the order of the input files, and its length must be the same as the number
+#'   of input VCF files.
 #'
 #' @return A data.frame.
 #'
