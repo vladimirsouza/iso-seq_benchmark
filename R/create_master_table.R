@@ -307,3 +307,41 @@ add_number_of_n_cigar_reads_to_master_table <- function(input_table, input_bam, 
 
   table_NCigarReadCount
 }
+
+
+
+#' Add column to compare two methods in a master table
+#'
+#' This function adds a column in a master table that compares two given methods.
+#' The new column informs whether the variant was called only by the first method
+#'   (`method1_name`), only by the second method (`method2_name`), by both
+#'   methods (`"both"`), or neither of them (`"neither"`).
+#'
+#' @param input_table A data.frame. The master table to add the new column.
+#' @param method1_name A 1-length string. The name of the first method.
+#' @param method2_name A 1-length string. The name of the second method.
+#'
+#' @return A data.frame
+#' @export
+add_two_method_comparison_to_master_table <- function(input_table, method1_name, method2_name) {
+  variant_called_only_by <- data.frame(
+    in_metho1=c(1,1,0,0),
+    in_metho2=c(1,0,1,0),
+    compare_methods=factor(c("both", method1_name, method2_name, "neither"))
+  )
+  compare_methods <- paste(
+    "compare",
+    snakecase::to_lower_camel_case(method1_name),
+    snakecase::to_lower_camel_case(method2_name),
+    sep="_"
+  )
+  method1_name_in <- paste0("in_", method1_name)
+  method2_name_in <- paste0("in_", method2_name)
+  names(variant_called_only_by) <- c(method1_name_in, method2_name_in, compare_methods)
+
+  left_join(input_table, variant_called_only_by)
+}
+### add column classification (TP, FN, FP, <NA>) of dv calling
+
+
+
