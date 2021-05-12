@@ -59,7 +59,7 @@ initiate_master_table <- function(..., method_names) {
       res <- unname( res[ as.character(all_positions) ] )
     })
 
-    data.frame(chrom=vcfs_chrmI[[1]] [[1]] [1],
+    data.frame(chrm=vcfs_chrmI[[1]] [[1]] [1],
                pos=all_positions,
                in_chrmI_methodJ,
                dv_chrmI_methodJ)
@@ -151,8 +151,8 @@ get_splice_sites_info <- function(input_bam, threads){
 add_splice_site_info_to_master_table <- function(input_table,
                                                  splice_sites,
                                                  max_dist_from_splice_site=20) {
-  if( !(names(input_table)[1] == "chrom") ){
-    stop("First column of input_table is not 'chrom'.\nAre you sure input_table was created by initiate_master_table?")
+  if( !(names(input_table)[1] == "chrm") ){
+    stop("First column of input_table is not 'chrm'.\nAre you sure input_table was created by initiate_master_table?")
   }
   if( !(names(input_table)[2] == "pos") ){
     stop("First column of input_table is not 'pos'.\nAre you sure input_table was created by initiate_master_table?")
@@ -161,7 +161,7 @@ add_splice_site_info_to_master_table <- function(input_table,
   splice_sites_split_by_chrm <- split(splice_sites, splice_sites$chrm)
   input_table_split_by_chrm <- names(splice_sites_split_by_chrm) %>%
     lapply(., function(chrm_i) {
-      table_chrmI <- input_table[ input_table$chrom==chrm_i, ]
+      table_chrmI <- input_table[ input_table$chrm==chrm_i, ]
       if( nrow(table_chrmI) > 0 ){
         table_chrmI
       }else{
@@ -242,7 +242,7 @@ add_read_coverage_from_bam_to_master_table <- function(..., input_table, method_
     table_cover_methodI <- seq_along(cover_methodI) %>%
       lapply(function(i) {
         input_table_i <- names(cover_methodI)[i] %>%
-          { filter(input_table, chrom==.) }
+          { filter(input_table, chrm==.) }
         if( nrow(input_table_i)==0 )
           return(NULL)
         coverage_per_site <- as.vector( cover_methodI[[i]] ) [input_table_i$pos]
