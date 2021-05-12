@@ -278,7 +278,7 @@ add_read_coverage_from_bam_to_master_table <- function(..., input_table, dataset
 #'
 #' @return A data.frame.
 #' @export
-add_number_of_n_cigar_reads <- function(input_table, input_bam, dataset_name=NULL) {
+add_number_of_n_cigar_reads_to_master_table <- function(input_table, input_bam, dataset_name=NULL) {
   bam_split_by_chrm <- split( input_bam, seqnames(input_bam) )
 
   table_NCigarReadCount <- seq_along(bam_split_by_chrm) %>%
