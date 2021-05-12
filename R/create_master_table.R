@@ -174,35 +174,35 @@ add_splice_site_info_to_master_table <- function(input_table,
       resize( width=2*max_dist_from_splice_site+1, fix="center" )
     re_ir <- IRanges(table_i$pos, width=1)
     ovl <- findOverlaps(re_ir, ss_ir)
-    table_i$near_ss <- integer( nrow(table_i) )
-    table_i$near_ss[ queryHits(ovl) ] <- 1L
+    table_i$is_near_ss <- integer( nrow(table_i) )
+    table_i$is_near_ss[ queryHits(ovl) ] <- 1L
 
     ss_lines <- split( subjectHits(ovl), queryHits(ovl) )
     re_lines <- as.integer( names(ss_lines) )
 
-    ss_n <- ss_dist <- is_acceptor_site <- as.list( rep(NA, nrow(table_i)) )
+    ss_num <- ss_dist <- is_acceptor_site <- as.list( rep(NA, nrow(table_i)) )
 
     k <- lapply(ss_lines, function(sl){
       ss_i$n[sl]
     })
-    ss_n[ re_lines ] <- k
+    ss_num[ re_lines ] <- k
 
     k <- mapply(function(rl, sl){
       table_i[rl,"pos"] - ss_i[sl,"pos", drop=T]
     }, re_lines, ss_lines, SIMPLIFY=FALSE)
-    ss_dist[ table_i$near_ss == 1] <- k
+    ss_dist[ table_i$is_near_ss == 1] <- k
 
     k <- mapply(function(sl){
       ss_i[sl,"is_acceptor_site", drop=T]
     }, ss_lines, SIMPLIFY=FALSE, USE.NAMES=FALSE)
-    is_acceptor_site[ table_i$near_ss == 1] <- k
+    is_acceptor_site[ table_i$is_near_ss == 1] <- k
 
     table_i$ss_dist <- ss_dist
     table_i$is_acceptor_site <- is_acceptor_site
-    table_i$ss_n <- ss_n
+    table_i$ss_num <- ss_num
 
-    table_i$single_ss <- 1*( lengths(table_i$is_acceptor_site) == 1 )
-    table_i$single_ss[ is.na(table_i$is_acceptor_site) ] <- NA
+    table_i$is_single_ss <- 1*( lengths(table_i$is_acceptor_site) == 1 )
+    table_i$is_single_ss[ is.na(table_i$is_acceptor_site) ] <- NA
 
     table_i
   }, input_table_split_by_chrm, splice_sites_split_by_chrm, SIMPLIFY=FALSE)
@@ -256,4 +256,7 @@ add_read_coverage_from_bam_to_master_table <- function(..., input_table, method_
 
   cbind(input_table, datasets_coverage_per_site)
 }
+
+
+
 
