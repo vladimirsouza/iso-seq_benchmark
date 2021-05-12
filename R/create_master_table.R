@@ -262,3 +262,48 @@ add_read_coverage_from_bam_to_master_table <- function(..., input_table, dataset
 
 
 
+
+
+
+
+#' Add the count of N-cigar reads to the master table
+#'
+#' This function adds a new column to a master table with the counts of
+#' N-cigar reads that overlap each site.
+#'
+#' @param input_table A data.frame. The master table to add the new column.
+#' @param input_bam A `GenomicAlignments` object from which N-cigar-read counts
+#'   are got.
+#' @param dataset_name A 1-length string used to set the name of the new column.
+#'
+#' @return A data.frame.
+#' @export
+add_number_of_n_cigar_reads <- function(input_table, input_bam, dataset_name=NULL) {
+  bam_split_by_chrm <- split( input_bam, seqnames(input_bam) )
+
+  table_NCigarReadCount <- seq_along(bam_split_by_chrm) %>%
+    lapply(function(i) {
+      input_table_i <- names(bam_split_by_chrm)[i] %>%
+        { filter(input_table, chrm==.) }
+      if( nrow(input_table_i)==0 )
+        return(NULL)
+
+      Ns <- cigarRangesAlongReferenceSpace( cigar(bam_split_by_chrm[[i]]),
+                                            ops="N",
+                                            pos=start(bam_split_by_chrm[[i]]) )
+
+      Ns <- unlist(Ns)
+      variant_positions_ir <- IRanges(input_table_i$pos, width=1)
+      ovl <- findOverlaps(variant_positions_ir, Ns)
+      ovl <- table( queryHits(ovl) )
+      n_cigar_read_count <- integer( nrow(input_table_i) )
+      n_cigar_read_count [ as.integer(names(ovl)) ] <- as.vector(ovl)
+      cbind(input_table_i, n_cigar_read_count)
+    })
+  table_NCigarReadCount <- bind_rows(table_NCigarReadCount) %>%
+    right_join(., input_table)
+  column_name <- paste0(dataset_name, "_ncr_num")
+  names(table_NCigarReadCount) [ncol(table_NCigarReadCount)] <- paste0(dataset_name, "_ncr_num")
+
+  table_NCigarReadCount
+}
