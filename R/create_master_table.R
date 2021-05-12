@@ -13,9 +13,10 @@
 #'
 #' @return A data.frame.
 #'
-#' @import dplyr
 #' @importFrom utils read.table
 #' @importFrom stats setNames
+#' @importFrom rlang .data
+#' @import dplyr
 #'
 #' @export
 initiate_master_table <- function(..., method_names) {
@@ -90,10 +91,12 @@ initiate_master_table <- function(..., method_names) {
 #'
 #' @return A data.frame in which each row is a splice-site position.
 #'
-#' @import GenomicAlignments
-#' @import dplyr
+#' @importFrom GenomicAlignments extractAlignmentRangesOnReference cigar start
+#'   end seqnames
 #' @importFrom BiocParallel MulticoreParam bpmapply
 #' @importFrom utils head
+#' @importFrom rlang .data
+#' @import dplyr
 #'
 #' @export
 get_splice_sites_info <- function(input_bam, threads){
@@ -118,7 +121,7 @@ get_splice_sites_info <- function(input_bam, threads){
   ss <- do.call(rbind, ss)
   if( is.null(ss) )
     return(NULL)
-  ss <- group_by(ss, chrm, pos, is_acceptor_site) %>%
+  ss <- group_by(ss, .data$chrm, .data$pos, .data$is_acceptor_site) %>%
     tally
 
   ss
@@ -141,10 +144,10 @@ get_splice_sites_info <- function(input_bam, threads){
 #'
 #' @return A data.frame.
 #'
-#' @importFrom IRanges IRanges
-#' @importFrom IRanges resize
-#' @importFrom S4Vectors queryHits
-#' @importFrom S4Vectors subjectHits
+#' @importFrom IRanges IRanges resize
+#' @importFrom GenomicAlignments findOverlaps
+#' @importFrom S4Vectors queryHits subjectHits
+#' @importFrom rlang .data
 #' @import dplyr
 #'
 #' @export
@@ -160,7 +163,7 @@ add_splice_site_info_to_master_table <- function(input_table,
 
   splice_sites_split_by_chrm <- split(splice_sites, splice_sites$chrm)
   input_table_split_by_chrm <- names(splice_sites_split_by_chrm) %>%
-    lapply(., function(chrm_i) {
+    lapply(function(chrm_i) {
       table_chrmI <- input_table[ input_table$chrm==chrm_i, ]
       if( nrow(table_chrmI) > 0 ){
         table_chrmI
@@ -232,6 +235,10 @@ add_splice_site_info_to_master_table <- function(input_table,
 #'   the same as the number of input VCF objects in '...'.
 #'
 #' @return A data frame.
+#'
+#' @importFrom rlang .data
+#' @import dplyr
+#'
 #' @export
 add_read_coverage_from_bam_to_master_table <- function(..., input_table, dataset_names) {
   datasets_coverage <- list(...)
@@ -244,7 +251,7 @@ add_read_coverage_from_bam_to_master_table <- function(..., input_table, dataset
     table_cover_datasetI <- seq_along(cover_datasetI) %>%
       lapply(function(i) {
         input_table_i <- names(cover_datasetI)[i] %>%
-          { filter(input_table, chrm==.) }
+          { filter(input_table, .data$chrm==.data) }
         if( nrow(input_table_i)==0 )
           return(NULL)
         coverage_per_site <- as.vector( cover_datasetI[[i]] ) [input_table_i$pos]
@@ -252,7 +259,7 @@ add_read_coverage_from_bam_to_master_table <- function(..., input_table, dataset
       })
     table_cover_datasetI <- bind_rows(table_cover_datasetI)
     right_join(table_cover_datasetI, input_table) %>%
-      pull(coverage_per_site)
+      pull(.data$coverage_per_site)
   })
   colnames(datasets_coverage_per_site) <- paste0(dataset_names, "_coverage")
 
@@ -277,6 +284,13 @@ add_read_coverage_from_bam_to_master_table <- function(..., input_table, dataset
 #' @param dataset_name A 1-length string used to set the name of the new column.
 #'
 #' @return A data.frame.
+#'
+#' @importFrom GenomicAlignments cigarRangesAlongReferenceSpace cigar findOverlaps
+#' @importFrom IRanges IRanges
+#' @importFrom S4Vectors queryHits
+#' @importFrom rlang .data
+#' @import dplyr
+#'
 #' @export
 add_number_of_n_cigar_reads_to_master_table <- function(input_table, input_bam, dataset_name=NULL) {
   bam_split_by_chrm <- split( input_bam, seqnames(input_bam) )
@@ -284,7 +298,7 @@ add_number_of_n_cigar_reads_to_master_table <- function(input_table, input_bam, 
   table_NCigarReadCount <- seq_along(bam_split_by_chrm) %>%
     lapply(function(i) {
       input_table_i <- names(bam_split_by_chrm)[i] %>%
-        { filter(input_table, chrm==.) }
+        { filter(input_table, .data$chrm==.data) }
       if( nrow(input_table_i)==0 )
         return(NULL)
 
@@ -301,7 +315,7 @@ add_number_of_n_cigar_reads_to_master_table <- function(input_table, input_bam, 
       cbind(input_table_i, n_cigar_read_count)
     })
   table_NCigarReadCount <- bind_rows(table_NCigarReadCount) %>%
-    right_join(., input_table)
+    right_join(input_table)
   column_name <- paste0(dataset_name, "_ncr_num")
   names(table_NCigarReadCount) [ncol(table_NCigarReadCount)] <- paste0(dataset_name, "_ncr_num")
 
@@ -322,6 +336,11 @@ add_number_of_n_cigar_reads_to_master_table <- function(input_table, input_bam, 
 #' @param method2_name A 1-length string. The name of the second method.
 #'
 #' @return A data.frame
+#'
+#' @importFrom snakecase to_lower_camel_case
+#' @importFrom rlang .data
+#' @import dplyr
+#'
 #' @export
 add_two_method_comparison_to_master_table <- function(input_table, method1_name, method2_name) {
   variant_called_only_by <- data.frame(

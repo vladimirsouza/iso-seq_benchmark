@@ -11,10 +11,12 @@ Description: Use ground-truth VCF files genereted from short-read data to compar
 Depends: R (>= 4.0)
 Imports:
   dplyr,
+  rlang,
   BiocParallel,
   GenomicAlignments,
   IRanges,
-  S4Vectors
+  S4Vectors,
+  snakecase
 License: GPL-2
 Encoding: UTF-8
 LazyData: true
