@@ -250,8 +250,8 @@ add_read_coverage_from_bam_to_master_table <- function(..., input_table, dataset
   datasets_coverage_per_site <- sapply(datasets_coverage, function(cover_datasetI) {
     table_cover_datasetI <- seq_along(cover_datasetI) %>%
       lapply(function(i) {
-        input_table_i <- names(cover_datasetI)[i] %>%
-          { filter(input_table, .data$chrm==.data) }
+        chrm_i <- names(cover_datasetI)[i]
+        input_table_i <- filter(input_table, .data$chrm==chrm_i)
         if( nrow(input_table_i)==0 )
           return(NULL)
         coverage_per_site <- as.vector( cover_datasetI[[i]] ) [input_table_i$pos]
@@ -297,8 +297,8 @@ add_number_of_n_cigar_reads_to_master_table <- function(input_table, input_bam, 
 
   table_NCigarReadCount <- seq_along(bam_split_by_chrm) %>%
     lapply(function(i) {
-      input_table_i <- names(bam_split_by_chrm)[i] %>%
-        { filter(input_table, .data$chrm==.data) }
+      chrm_i <- names(bam_split_by_chrm)[i]
+      input_table_i <- filter(input_table, .data$chrm==chrm_i)
       if( nrow(input_table_i)==0 )
         return(NULL)
 
