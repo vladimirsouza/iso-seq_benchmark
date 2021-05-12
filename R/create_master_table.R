@@ -176,6 +176,7 @@ add_splice_site_info_to_master_table <- function(input_table,
     ovl <- findOverlaps(re_ir, ss_ir)
     table_i$is_near_ss <- integer( nrow(table_i) )
     table_i$is_near_ss[ queryHits(ovl) ] <- 1L
+    table_i$is_near_ss <- factor(table_i$is_near_ss, levels=0:1)
 
     ss_lines <- split( subjectHits(ovl), queryHits(ovl) )
     re_lines <- as.integer( names(ss_lines) )
@@ -189,6 +190,7 @@ add_splice_site_info_to_master_table <- function(input_table,
 
     k <- mapply(function(rl, sl){
       table_i[rl,"pos"] - ss_i[sl,"pos", drop=T]
+      # ss_i[sl,"pos", drop=T] - table_i[rl,"pos"]
     }, re_lines, ss_lines, SIMPLIFY=FALSE)
     ss_dist[ table_i$is_near_ss == 1] <- k
 
@@ -202,7 +204,8 @@ add_splice_site_info_to_master_table <- function(input_table,
     table_i$ss_num <- ss_num
 
     table_i$is_single_ss <- 1*( lengths(table_i$is_acceptor_site) == 1 )
-    table_i$is_single_ss[ is.na(table_i$is_acceptor_site) ] <- NA
+    table_i$is_single_ss[ is.na(table_i$is_acceptor_site) ] <- -1
+    table_i$is_single_ss <- factor( table_i$is_single_ss, levels=(-1):1 )
 
     table_i
   }, input_table_split_by_chrm, splice_sites_split_by_chrm, SIMPLIFY=FALSE)
