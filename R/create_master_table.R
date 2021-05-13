@@ -401,3 +401,32 @@ add_method_vs_truth_comparison_to_master_table <- function(input_table, method_n
 }
 
 
+
+
+
+
+#' Calculate precision, sensitivity and F1-score of a method in a master table
+#'
+#' @param input_table A data.frame. The master table.
+#' @param method_name A 1-length string. The name of the method to calculate the
+#'   accuracy measures.
+#' @param truth_name A 1-length string. The name of the ground-truth to validate
+#'   the method.
+#'
+#' @return A named vector with the accuracy measures.
+#' @export
+calc_precision_sensitivity_f1Score <- function(input_table, method_name, truth_name) {
+  in_method <- paste0("in_", method_name)
+  in_truth <- paste0("in_", truth_name)
+  method_classification <- paste0(method_name, "_classification")
+
+  tp_count <- sum(input_table[,method_classification] == "TP")
+  positive_method <- sum(input_table[,in_method])
+  positive_truth <- sum(input_table[,in_truth])
+
+  precision <- tp_count/positive_method
+  sensitivity <- tp_count/positive_truth
+  f1Score <- 2*(sensitivity * precision) / (sensitivity + precision)
+
+  c(precision=precision, sensitivity=sensitivity, f1Score=f1Score)
+}
