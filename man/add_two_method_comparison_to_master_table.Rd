@@ -18,7 +18,7 @@ add_two_method_comparison_to_master_table(
 \item{method2_name}{A 1-length string. The name of the second method.}
 }
 \value{
-A data.frame
+A data.frame.
 }
 \description{
 This function adds a column in a master table that compares two given methods.

@@ -335,7 +335,7 @@ add_number_of_n_cigar_reads_to_master_table <- function(input_table, input_bam, 
 #' @param method1_name A 1-length string. The name of the first method.
 #' @param method2_name A 1-length string. The name of the second method.
 #'
-#' @return A data.frame
+#' @return A data.frame.
 #'
 #' @importFrom snakecase to_lower_camel_case
 #' @importFrom rlang .data
@@ -360,7 +360,44 @@ add_two_method_comparison_to_master_table <- function(input_table, method1_name,
 
   left_join(input_table, variant_called_only_by)
 }
-### add column classification (TP, FN, FP, <NA>) of dv calling
 
+
+
+
+#' Add classiffication of variants calls by comparing to the ground-truth to a
+#'   master table
+#'
+#' Compare variants calls of a method to the ground-truth and classify each one
+#'   as true-positiove (TP), false-negative (FN), false-positive (FP), or
+#'   true-negative (TN).
+#'
+#' @param input_table A data.frame. The master table to add the new column.
+#' @param method_name A 1-length string. The name of the method to compare to the
+#'   ground-truth.
+#' @param truth_name A 1-length string. The name of the ground-truth.
+#'
+#' @return A data.frame.
+#'
+#' @importFrom rlang .data
+#' @import dplyr
+#'
+#' @export
+add_method_vs_truth_comparison_to_master_table <- function(input_table, method_name, truth_name) {
+  method_classification <- data.frame(
+    in_method=c(1,1,0,0),
+    in_truth=c(1,0,1,0),
+    classification=factor(c("TP", "FP", "FN", "TN"))
+  )
+  classify_method_name <- paste(
+    method_name,
+    "classification",
+    sep="_"
+  )
+  method_name_in <- paste0("in_", method_name)
+  truth_name_in <- paste0("in_", truth_name)
+  names(method_classification) <- c(method_name_in, truth_name_in, classify_method_name)
+
+  left_join(input_table, method_classification)
+}
 
 
