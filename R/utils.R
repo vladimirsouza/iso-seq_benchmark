@@ -26,9 +26,9 @@ igv_batch_screenshots <- function(chrm, pos, output_dir, prefix, snapshot_path, 
   
   ### subset from bed
   if( nrow(bed) < screenshot_number ) screenshot_number <- nrow(bed)
-  bed <- {1:nrow(bed)} %>% 
-    sample(screenshot_number) %>% 
-    bed[.data,]
+  k <- {1:nrow(bed)} %>% 
+    sample(screenshot_number)
+  bed <- bed[k,]
   
   ### write bed file
   bed_file <- file.path( output_dir, paste0(prefix, ".bed") )
