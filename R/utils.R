@@ -9,6 +9,8 @@
 #'   script will save the screenshots.
 #' @param windows_size 1-length integer. Window size of the screenshot.
 #' @param screenshot_number 1-length integer. Number of screenshot to generate.
+#' @param output_positions If TRUE, output a data.frame with variant positions and 
+#'   the reagions to visualize.
 #'
 #' @return NULL
 #' 
@@ -18,7 +20,7 @@
 #' @import dplyr
 #' 
 #' @export
-igv_batch_screenshots <- function(chrm, pos, output_dir, prefix, snapshot_path, windows_size=1501, screenshot_number=100) {
+igv_batch_screenshots <- function(chrm, pos, output_dir, prefix, snapshot_path, windows_size=1501, screenshot_number=100, output_positions=FALSE) {
   ### create the bed file that store the area of interest to visualize
   bed <- IRanges(pos, width=1) %>% 
     resize(windows_size, "center") 
@@ -29,6 +31,12 @@ igv_batch_screenshots <- function(chrm, pos, output_dir, prefix, snapshot_path, 
   k <- {1:nrow(bed)} %>% 
     sample(screenshot_number)
   bed <- bed[k,]
+  
+  ### output
+  if(output_positions) {
+    output_dataframe_positions <- data.frame( varaints= paste0(chrm[k], ":", pos[k]),
+                                              regions= paste0(bed$chrm, ":", bed$start, "-", bed$end) )
+  }
   
   ### write bed file
   bed_file <- file.path( output_dir, paste0(prefix, ".bed") )
@@ -46,4 +54,8 @@ igv_batch_screenshots <- function(chrm, pos, output_dir, prefix, snapshot_path, 
                    bed_file, batch_file)
   system(cmds)
   unlink(bed_file)
+  
+  if(output_positions) {
+    output_dataframe_positions
+  }
 }

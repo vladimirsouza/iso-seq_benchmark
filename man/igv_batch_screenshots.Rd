@@ -11,7 +11,8 @@ igv_batch_screenshots(
   prefix,
   snapshot_path,
   windows_size = 1501,
-  screenshot_number = 100
+  screenshot_number = 100,
+  output_positions = FALSE
 )
 }
 \arguments{
@@ -30,6 +31,9 @@ script will save the screenshots.}
 \item{windows_size}{1-length integer. Window size of the screenshot.}
 
 \item{screenshot_number}{1-length integer. Number of screenshot to generate.}
+
+\item{output_positions}{If TRUE, output a data.frame with variant positions and 
+the reagions to visualize.}
 }
 \description{
 Generate igv batch screenshots script
