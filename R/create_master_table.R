@@ -42,7 +42,7 @@ initiate_master_table <- function(..., method_names) {
     })
   })
 
-  ### which variants are contained in each vcf and their DP tag (from VCF file)
+  ### which variants are contained in each vcf and what are ther DP tag (from VCF file)
   master_table <- apply(vcfs, 1, function(vcfs_chrmI) {
     all_positions <- bind_rows(vcfs_chrmI) %>%
       pull(2) %>%
@@ -60,11 +60,14 @@ initiate_master_table <- function(..., method_names) {
       res <- unname( res[ as.character(all_positions) ] )
     })
 
-    data.frame(chrm=vcfs_chrmI[[1]] [[1]] [1],
-               pos=all_positions,
+    data.frame(pos=all_positions,
                in_chrmI_methodJ,
                dv_chrmI_methodJ)
   })
+  master_table <- mapply(function(pc, mt){
+    cbind(chrm=pc, mt)
+  }, present_chromosomes, master_table, SIMPLIFY=FALSE)
+  
   master_table <- bind_rows(master_table)
 
   method_names <- c( paste0("in_", method_names),
