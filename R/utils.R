@@ -34,7 +34,7 @@ igv_batch_screenshots <- function(chrm, pos, output_dir, prefix, snapshot_path, 
   
   ### output
   if(output_positions) {
-    output_dataframe_positions <- data.frame( varaints= paste0(chrm[k], ":", pos[k]),
+    output_dataframe_positions <- data.frame( variants= paste0(chrm[k], ":", pos[k]),
                                               regions= paste0(bed$chrm, ":", bed$start, "-", bed$end) )
   }
   
