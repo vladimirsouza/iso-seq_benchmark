@@ -182,6 +182,8 @@ add_splice_site_info_to_master_table <- function(input_table,
     })
 
   table_ss <- mapply(function(table_i, ss_i){
+    if( is.null(table_i) )
+      return(NULL)
     ss_ir <- IRanges(ss_i$pos, width=1) %>%
       resize( width=2*max_dist_from_splice_site+1, fix="center" )
     re_ir <- IRanges(table_i$pos, width=1)
