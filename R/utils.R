@@ -103,7 +103,10 @@ calc_accuracy_measures <- function(input_table, method_name, truth_name) {
 #' Return a ggplot object for visualization.
 #'
 #' @param master_table A data.frame. The input master table.
-#' @param method_names A vector of strings. The name of the methods to be compared.
+#' @param method_names A vector of strings. The names of the methods to be compared
+#'   in the master table.
+#' @param output_method_names A vector of strings. How to output the names of the
+#'   methods to be compared. The defaut is NULL.
 #' @param data_name A 1-length string. The name of the dataset used with the methods 
 #'   to be compared.
 #' @param truth_name A 1-length string. The name of the ground-truth.
@@ -120,34 +123,48 @@ calc_accuracy_measures <- function(input_table, method_name, truth_name) {
 #' 
 #' @export
 check_accuracy_per_coverage <- function(master_table, 
-                                        method_names, data_name,
+                                        method_names,
+                                        output_method_names=NULL,
+                                        data_name,
                                         truth_name, 
                                         interval_start, interval_end) {
   intervals <- matrix( c(interval_start, interval_end), byrow=TRUE, nrow=2) %>% 
     data.frame
   
   mt_intervalI_methodJ <- lapply(intervals, function(interv) {
-    mt_intervalI <- paste0(data_name, "_coverage") %>% 
-      master_table[,.data] %>% 
-      { .data>=interv[1] & .data<=interv[2] } %>% 
-      master_table[.data,]
+    k <- master_table[ ,paste0(data_name, "_coverage") ]
+    mt_intervalI <- master_table[ k>=interv[1] & k<=interv[2], ]
+    
     accur_intervalI_methodJ <- sapply(method_names, function(method_names_i) {
       calc_accuracy_measures(mt_intervalI, method_names_i, truth_name)
     })
-    data.frame(accur_intervalI_methodJ) %>% 
-      rownames_to_column(.data, "measure") %>% 
-      cbind( interval=paste(.data, interv, collapse="-") )
+    
+    k <- data.frame(accur_intervalI_methodJ)
+    k <- rownames_to_column(k, "measure")
+    cbind( k, interval=paste(interv, collapse="-") )
   })
   
-  mt_intervalI_methodJ <- bind_rows(mt_intervalI_methodJ) %>% 
-    gather(.data, "method", "score", -.data$measure, -.data$interval, factor_key=TRUE)
-  mt_intervalI_methodJ$measure <- factor(mt_intervalI_methodJ$measure)
-  mt_intervalI_methodJ$interval <- sapply(unname(intervals), paste, collapse="-") %>% 
-    factor(mt_intervalI_methodJ$interval, levels=.data, ordered=TRUE)
+  k <- bind_rows(mt_intervalI_methodJ) 
+  mt_intervalI_methodJ <- gather(k, "method", "score", -.data$measure, -.data$interval, factor_key=TRUE)
   
-  ggplot(mt_intervalI_methodJ, aes(x=.data$method, y=.data$score, 
-                                   fill=.data$method, colour=.data$method)) +
+  if( !is.null(output_method_names) ){
+    if( length(method_names) != length(output_method_names) ){
+      stop("The lengths of method_names and output_method_names must be equal.")
+    }
+    stopifnot( identical(method_names, levels(mt_intervalI_methodJ$method)) )
+    levels(mt_intervalI_methodJ$method) <- output_method_names
+  }
+  
+  mt_intervalI_methodJ$measure <- factor(mt_intervalI_methodJ$measure)
+  
+  k <- sapply(unname(intervals), paste, collapse="-")
+  mt_intervalI_methodJ$interval <- factor(mt_intervalI_methodJ$interval, levels=k, ordered=TRUE)
+  
+  ggplot(mt_intervalI_methodJ, aes(x=.data$method, y=.data$score, fill=.data$method)) +
     facet_grid(.data$measure~.data$interval) +
     geom_bar(stat="identity") +
-    theme(axis.text.x = element_text(angle = 270))
+    theme(axis.text.x = element_text(angle = 270)) +
+    theme(legend.position="bottom") +
+    scale_x_discrete(labels=method_names)
+  
 }
