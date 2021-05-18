@@ -140,13 +140,14 @@ check_accuracy_per_coverage <- function(master_table,
   })
   
   mt_intervalI_methodJ <- bind_rows(mt_intervalI_methodJ) %>% 
-    gather(.data, "method", "score", -measure, -interval, factor_key=TRUE)
+    gather(.data, "method", "score", -.data$measure, -.data$interval, factor_key=TRUE)
   mt_intervalI_methodJ$measure <- factor(mt_intervalI_methodJ$measure)
   mt_intervalI_methodJ$interval <- sapply(unname(intervals), paste, collapse="-") %>% 
     factor(mt_intervalI_methodJ$interval, levels=.data, ordered=TRUE)
   
-  ggplot(mt_intervalI_methodJ, aes(x=method, y=score, fill=method, colour=method)) +
-    facet_grid(measure~interval) +
+  ggplot(mt_intervalI_methodJ, aes(x=.data$method, y=.data$score, 
+                                   fill=.data$method, colour=.data$method)) +
+    facet_grid(.data$measure~.data$interval) +
     geom_bar(stat="identity") +
     theme(axis.text.x = element_text(angle = 270))
 }
