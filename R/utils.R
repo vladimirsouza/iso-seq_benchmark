@@ -59,3 +59,94 @@ igv_batch_screenshots <- function(chrm, pos, output_dir, prefix, snapshot_path, 
     output_dataframe_positions
   }
 }
+
+
+
+
+
+
+
+#' Calculate precision, sensitivity and F1-score of a method in a master table
+#'
+#' @param input_table A data.frame. The master table.
+#' @param method_name A 1-length string. The name of the method to calculate the
+#'   accuracy measures.
+#' @param truth_name A 1-length string. The name of the ground-truth to validate
+#'   the method.
+#'
+#' @return A named vector with the accuracy measures.
+#' @export
+calc_accuracy_measures <- function(input_table, method_name, truth_name) {
+  in_method <- paste0("in_", method_name)
+  in_truth <- paste0("in_", truth_name)
+  method_classification <- paste0(method_name, "_classification")
+  
+  tp_count <- sum(input_table[,method_classification] == "TP")
+  positive_method <- sum(input_table[,in_method])
+  positive_truth <- sum(input_table[,in_truth])
+  
+  precision <- tp_count/positive_method
+  sensitivity <- tp_count/positive_truth
+  f1Score <- 2*(sensitivity * precision) / (sensitivity + precision)
+  
+  c(precision=precision, sensitivity=sensitivity, f1Score=f1Score)
+}
+
+
+
+
+
+
+
+#' Barplot of accuracy measures for different methods and coverage
+#' 
+#' Return a ggplot object for visualization.
+#'
+#' @param master_table A data.frame. The input master table.
+#' @param method_names A vector of strings. The name of the methods to be compared.
+#' @param data_name A 1-length string. The name of the dataset used with the methods 
+#'   to be compared.
+#' @param truth_name A 1-length string. The name of the ground-truth.
+#' @param interval_start A vector of integers. The start position of all intervals.
+#' @param interval_end A vector of integers. The end position of all intervals.
+#'
+#' @return A ggplot object.
+#' 
+#' @importFrom tibble rownames_to_column
+#' @importFrom tidyr gather
+#' @importFrom rlang .data
+#' @import ggplot2
+#' @import dplyr
+#' 
+#' @export
+check_accuracy_per_coverage <- function(master_table, 
+                                        method_names, data_name,
+                                        truth_name, 
+                                        interval_start, interval_end) {
+  intervals <- matrix( c(interval_start, interval_end), byrow=TRUE, nrow=2) %>% 
+    data.frame
+  
+  mt_intervalI_methodJ <- lapply(intervals, function(interv) {
+    mt_intervalI <- paste0(data_name, "_coverage") %>% 
+      master_table[,.data] %>% 
+      { .data>=interv[1] & .data<=interv[2] } %>% 
+      master_table[.data,]
+    accur_intervalI_methodJ <- sapply(method_names, function(method_names_i) {
+      calc_accuracy_measures(mt_intervalI, method_names_i, truth_name)
+    })
+    data.frame(accur_intervalI_methodJ) %>% 
+      rownames_to_column(.data, "measure") %>% 
+      cbind( interval=paste(.data, interv, collapse="-") )
+  })
+  
+  mt_intervalI_methodJ <- bind_rows(mt_intervalI_methodJ) %>% 
+    gather(.data, "method", "score", -measure, -interval, factor_key=TRUE)
+  mt_intervalI_methodJ$measure <- factor(mt_intervalI_methodJ$measure)
+  mt_intervalI_methodJ$interval <- sapply(unname(intervals), paste, collapse="-") %>% 
+    factor(mt_intervalI_methodJ$interval, levels=.data, ordered=TRUE)
+  
+  ggplot(mt_intervalI_methodJ, aes(x=method, y=score, fill=method, colour=method)) +
+    facet_grid(measure~interval) +
+    geom_bar(stat="identity") +
+    theme(axis.text.x = element_text(angle = 270))
+}
