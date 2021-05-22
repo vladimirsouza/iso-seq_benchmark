@@ -7,6 +7,7 @@
 check_accuracy_per_coverage(
   master_table,
   method_names,
+  output_method_names = NULL,
   data_name,
   truth_name,
   interval_start,
@@ -16,7 +17,11 @@ check_accuracy_per_coverage(
 \arguments{
 \item{master_table}{A data.frame. The input master table.}
 
-\item{method_names}{A vector of strings. The name of the methods to be compared.}
+\item{method_names}{A vector of strings. The names of the methods to be compared
+in the master table.}
+
+\item{output_method_names}{A vector of strings. How to output the names of the
+methods to be compared. The defaut is NULL.}
 
 \item{data_name}{A 1-length string. The name of the dataset used with the methods 
 to be compared.}
