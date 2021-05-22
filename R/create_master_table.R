@@ -462,10 +462,82 @@ add_method_vs_truth_comparison_to_master_table <- function(input_table, method_n
 
 
 
+#' Add column that states whether the variant in the ground-truth is an indel or not
+#' 
+#' @param input_table A data.frame. The master table to add the new column.
+#' @param vcf_file 1-length string. The address of the ground-truth VCF file.
+#' @param truth_name 1-length string. The name of the ground-truth.
+#'
+#' @return A data.frame
+#' 
+#' @importFrom vcfR read.vcfR
+#' 
+#' @export
+add_the_ground_truth_indel_information_to_master_table <- function(input_table, vcf_file, truth_name) {
+  
+  vcf <- read.vcfR(vcf_file)
+  k <- sub(":.+", "", vcf@gt[,2])
+  k_gt <- strsplit(k, "/|\\|")
+  
+  k_alt <- strsplit(vcf@fix[,5], ",")
+  
+  alt_len <- mapply(function(g, a){
+    g <- as.integer(g[g!="0"])
+    nchar(a[g])
+  }, k_gt, k_alt, SIMPLIFY=FALSE)
+  ref_len <- nchar(vcf@fix[,4])
+  
+  is_any_indel <- mapply(function(a, r){
+    any( c(a,r) != 1 )
+  }, alt_len, ref_len)
+  k <- paste(vcf@fix[,1], vcf@fix[,2])
+  is_any_indel <- setNames(is_any_indel, k)
+  
+  k <- paste0("in_", truth_name)
+  in_vcf <- input_table[,k] == 1
+  k <- paste(input_table$chrm[in_vcf], input_table$pos[in_vcf])
+  is_any_indel <- is_any_indel[k]
+  
+  k <- paste0("is_indel_", truth_name)
+  input_table[,k] <- NA
+  input_table[,k] [in_vcf] <- 1*unname(is_any_indel)
+  
+  input_table
+}
 
 
 
 
+
+
+#' Add column that states whether the variant called by a method is an indel or not
+#'
+#' @param input_table A data.frame. The master table to add the new column.
+#' @param vcf_file 1-length string. The address of the method VCF file.
+#' @param method_name 1-length string. The name of the method.
+#' @param truth_name 1-length string. The name of the ground-truth.
+#'
+#' @return A data.frame
+#' 
+#' @export
+add_a_method_indel_information_to_master_table <- function(input_table, vcf_file, method_name, truth_name) {
+  k <- paste0("is_indel_", truth_name)
+  if( is.null(input_table[,k]) ) {
+    stop_message <- gettextf("The column %s must exist in input_table.\nHave you forgotten to run add_the_ground_truth_indel_information_to_master_table?",
+                             k)
+    stop(stop_message)
+  }
+  
+  add_method_indel_info <- add_the_ground_truth_indel_information_to_master_table
+  input_table <- add_method_indel_info(input_table, vcf_file, method_name)
+  
+  is_indel_method_name <- paste0("is_indel_", method_name)
+  is_indel_truth_name <- paste0("is_indel_", truth_name)
+  k <- !is.na(input_table[,is_indel_truth_name])
+  input_table[k, is_indel_method_name] <- input_table[k, is_indel_truth_name]
+  
+  input_table
+}
 
 
 
