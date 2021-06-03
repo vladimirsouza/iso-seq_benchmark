@@ -200,7 +200,8 @@ add_info_tag_from_vcf <- function(input_table, col_name=NULL, tag, vcf_file){
   vcf <- read.vcfR(vcf_file)
   
   k <- gettextf(".*%s=(.+?);.*", tag)
-  k <- sub(k, "\\1", vcf@fix[,8]) 
+  k <- sub( k, "\\1", 
+            paste0(vcf@fix[,8], ";") )
   k <- as.numeric(k)
   k[is.na(k)] <- -1
   tag_values <- data.frame(chrm=vcf@fix[,1],
