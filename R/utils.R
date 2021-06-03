@@ -168,3 +168,45 @@ check_accuracy_per_coverage <- function(master_table,
     scale_x_discrete(labels=method_names)
   
 }
+
+
+
+
+
+#' Add a INFO tag from a VCF file to a master table
+#' 
+#' If a variant in the VCF file doesn'r contain the specified tag, the function
+#' return -1 for that variant.
+#' 
+#' @param input_table A data.frame. The input master table.
+#' @param col_name A 1-length string. the name of the column to add. If NULL (default),
+#'   `col_name` is equal to `tag`.
+#' @param tag A 1-length string. The name of the tag to add. It must be exactly how
+#'   the tag is written in the VCF file (case sensitive).
+#' @param vcf_file A 1-length string. The path to the VCF file from which the tag
+#'   is extracted.
+#'
+#' @return A data.frame.
+#' 
+#' @importFrom vcfR read.vcfR
+#' @importFrom dplyr left_join
+#' 
+#' @export
+add_info_tag_from_vcf <- function(input_table, col_name=NULL, tag, vcf_file){
+  if(is.null(col_name)){
+    col_name <- tag
+  }
+  
+  vcf <- read.vcfR(vcf_file)
+  
+  k <- gettextf(".*%s=(.+?);.*", tag)
+  k <- sub(k, "\\1", vcf@fix[,8]) 
+  k <- as.numeric(k)
+  k[is.na(k)] <- -1
+  tag_values <- data.frame(chrm=vcf@fix[,1],
+                           pos=as.integer(vcf@fix[,2]),
+                           tag=k)
+  names(tag_values)[3] <- col_name
+  
+  left_join(input_table, tag_values)
+}
