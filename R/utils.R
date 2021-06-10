@@ -211,3 +211,38 @@ add_info_tag_from_vcf <- function(input_table, col_name=NULL, tag, vcf_file){
   
   left_join(input_table, tag_values)
 }
+
+
+
+#' Add some statistic of a tag about reads of a BAM file
+#'
+#' @param input_table A data.frame. The input master table.
+#' @param col_name A 1-length string. The name of the new column to add.
+#' @param galn A GAlignment object. The alingnment from where the tag is 
+#'   extracted.
+#' @param tag A 1-length string. The name of tag that is wanted to calculate
+#'   the statistic `stat`. The name must be exactly the same of one column
+#'   name from `mcols(galn)`.
+#' @param stat A function used to calculate the desired statistic.
+#'
+#' @return A data.frame.
+#' 
+#' @importFrom GenomicRanges GRanges
+#' @importFrom IRanges IRanges
+#' @importFrom GenomicAlignments findOverlaps
+#' @importFrom S4Vectors mcols
+#' 
+#' @export
+add_some_read_statistic_from_bam_metacolumn <- function(input_table, col_name, galn, tag, stat){
+  dat_pos <- GRanges(input_table$chrm, IRanges(input_table$pos, width=1))
+  ovl <- findOverlaps(dat_pos, galn)
+  output_stat <- tapply( subjectHits(ovl), queryHits(ovl), function(i){
+    stat( mcols(galn) [,tag] [i] )
+  })
+  input_table[,col_name] <- NA
+  k <- as.integer( names(output_stat) )
+  input_table[k ,col_name] <- unname(output_stat)
+  
+  input_table
+}
+
