@@ -18,4 +18,9 @@ A master table generated from Jurkat human cells. Variant callers to compare
 are DeepVariant and GATK on Iso-Seq data. The ground-truth was generated with
 GATK from short-read data.
 }
+\details{
+Methods to avaluate included: dv, dv_s, dv_s_fc, gatk_s.
+
+Ground-truth: tr_dna_merged.
+}
 \keyword{datasets}
