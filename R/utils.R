@@ -246,3 +246,51 @@ add_some_read_statistic_from_bam_metacolumn <- function(input_table, col_name, g
   input_table
 }
 
+
+
+
+
+#' Add column of density of variants around each variant called by a method
+#'
+#' @param input_table A data.frame. The input master table.
+#' @param window_size A 1-length integer. The size of the window where variants
+#'   are used to calculate the density of variants around a each variant called
+#'   by the specified method.
+#' @param method A 1-length string. The name of the method to be used.
+#'
+#' @return A data.frame.
+#' 
+#' @importFrom GenomicRanges GRanges
+#' @importFrom IRanges IRanges
+#' @importFrom IRanges resize
+#' @importFrom IRanges findOverlaps
+#' @importFrom S4Vectors queryHits
+#' @importFrom S4Vectors subjectHits
+#' @importFrom snakecase to_lower_camel_case
+#' 
+#' @export
+add_variant_density_of_a_method <- function(input_table, window_size, method){
+  # input_table <- input_table_bk
+  # window_size <- 101
+  # method <- "tr_dna_merged"
+  
+  
+  method_calls <- paste0("in_", method)
+  in_method <- input_table[,method_calls] == 1
+  in_method_range <- GRanges( input_table$chrm[in_method], 
+                              IRanges(input_table$pos[in_method], width=1) )
+  
+  all_variants <- GRanges( input_table$chrm,
+                           IRanges(input_table$pos, width=1) )
+  all_windows <- resize(all_variants, window_size, "center")
+  
+  ovl <- findOverlaps(in_method_range, all_windows)
+  variant_density <- tapply(queryHits(ovl), subjectHits(ovl), length)
+  
+  variant_density_column <- paste0( "variantDensity_", to_lower_camel_case(method) )
+  input_table[,variant_density_column] <- 0
+  k <- as.numeric( names(variant_density) )
+  input_table[k, variant_density_column] <- variant_density
+  
+  input_table
+}
