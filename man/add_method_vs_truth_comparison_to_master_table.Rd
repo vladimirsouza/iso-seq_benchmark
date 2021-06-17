@@ -8,7 +8,8 @@
 add_method_vs_truth_comparison_to_master_table(
   input_table,
   method_name,
-  truth_name
+  truth_name,
+  replace_column = FALSE
 )
 }
 \arguments{
@@ -18,6 +19,9 @@ add_method_vs_truth_comparison_to_master_table(
 ground-truth.}
 
 \item{truth_name}{A 1-length string. The name of the ground-truth.}
+
+\item{replace_column}{1-length boolean (default is FALSE). If the classification
+column already exists and it is desired to replace it.}
 }
 \value{
 A data.frame.

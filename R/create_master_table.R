@@ -430,6 +430,8 @@ add_two_method_comparison_to_master_table <- function(input_table, method1_name,
 #' @param method_name A 1-length string. The name of the method to compare to the
 #'   ground-truth.
 #' @param truth_name A 1-length string. The name of the ground-truth.
+#' @param replace_column 1-length boolean (default is FALSE). If the classification
+#'   column already exists and it is desired to replace it.
 #'
 #' @return A data.frame.
 #'
@@ -437,7 +439,7 @@ add_two_method_comparison_to_master_table <- function(input_table, method1_name,
 #' @import dplyr
 #'
 #' @export
-add_method_vs_truth_comparison_to_master_table <- function(input_table, method_name, truth_name) {
+add_method_vs_truth_comparison_to_master_table <- function(input_table, method_name, truth_name, replace_column=FALSE) {
   method_classification <- data.frame(
     in_method=c(1,1,0,0),
     in_truth=c(1,0,1,0),
@@ -451,8 +453,18 @@ add_method_vs_truth_comparison_to_master_table <- function(input_table, method_n
   method_name_in <- paste0("in_", method_name)
   truth_name_in <- paste0("in_", truth_name)
   names(method_classification) <- c(method_name_in, truth_name_in, classify_method_name)
-
-  left_join(input_table, method_classification)
+  
+  if(replace_column){
+    classify_method_name_original <- paste0(classify_method_name, "_original")
+    names(input_table) [names(input_table) == classify_method_name] <- classify_method_name_original
+    input_table <- left_join(input_table, method_classification)
+    input_table[,classify_method_name_original] <- input_table[,classify_method_name]
+    input_table <- input_table[,-ncol(input_table)]
+    names(input_table) [names(input_table) == classify_method_name_original] <- classify_method_name
+    input_table
+  }else{
+    left_join(input_table, method_classification)
+  }
 }
 
 
