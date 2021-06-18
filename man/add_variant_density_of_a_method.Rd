@@ -4,7 +4,7 @@
 \alias{add_variant_density_of_a_method}
 \title{Add column of density of variants around each variant called by a method}
 \usage{
-add_variant_density_of_a_method(input_table, window_size, method)
+add_variant_density_of_a_method(input_table, window_size, used_methods)
 }
 \arguments{
 \item{input_table}{A data.frame. The input master table.}
@@ -13,7 +13,7 @@ add_variant_density_of_a_method(input_table, window_size, method)
 are used to calculate the density of variants around a each variant called
 by the specified method.}
 
-\item{method}{A 1-length string. The name of the method to be used.}
+\item{used_methods}{A vector of strings. The names of the methods to be used.}
 }
 \value{
 A data.frame.

@@ -67,5 +67,5 @@
 #'
 #' @usage data(jurkat_master_table_v7_notFiltered)
 #'
-#' @format A data.frame with dimensions equal to (1018480, 31).
+#' @format A data.frame with dimensions equal to (1018480, 32).
 "jurkat_master_table_v7_notFiltered"

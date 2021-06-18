@@ -5,7 +5,7 @@
 \alias{jurkat_master_table_v7_notFiltered}
 \title{The jurkat_master_table_v7_notFiltered master table}
 \format{
-A data.frame with dimensions equal to (1018480, 31).
+A data.frame with dimensions equal to (1018480, 32).
 }
 \usage{
 data(jurkat_master_table_v7_notFiltered)
