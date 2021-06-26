@@ -173,6 +173,146 @@ check_accuracy_per_coverage <- function(master_table,
 
 
 
+
+
+
+
+
+#' Precision-recall curves to compare methods, using different filtering on read
+#'   coverage
+#'
+#' @param master_table A data.frame. The input master table.
+#' @param method_names A vector of strings. The names of the methods to be compared.
+#' @param output_method_names A vector of strings. How to output the names of the
+#'   methods to be compared. The default is NULL.
+#' @param data_name A 1-length string. The name of the dataset used with the methods 
+#'   to be compared.
+#' @param truth_name A 1-length string. The name of the ground-truth.
+#' @param coverage_threshold A vector of integers. The minimum thresholds to filer 
+#'   by read coverage. Each element defines a point in the precision-recall curves.
+#' @param indels_snps_separated A 1-length logical vector. Default is equal to FALSE.
+#'   If TRUE, each precision-recall curves is separated into two: one for indels
+#'   and other for SNPs.
+#' 
+#' @return A ggplot object.
+#' 
+#' @import ggplot2
+#' @importFrom tibble rownames_to_column
+#' @importFrom tidyr gather
+#' @importFrom rlang .data
+#' @importFrom dplyr bind_rows
+#' @importFrom dplyr left_join
+#' @importFrom dplyr filter
+#' 
+#' @export
+precision_recall_curve_per_coverage <- function(master_table,
+                                                method_names,
+                                                output_method_names=NULL,
+                                                data_name,
+                                                truth_name,
+                                                coverage_threshold,
+                                                indels_snps_separated){
+  
+  mt_thresholdI_methodJ <- lapply(coverage_threshold, function(threshold_i) {
+    k <- master_table[ ,paste0(data_name, "_coverage") ]
+    mt_thresholdI <- master_table[ k>=threshold_i, ]
+    
+    if(indels_snps_separated){
+      accur_thresholdI <- lapply(method_names, function(method_names_i){
+        k <- which( mt_thresholdI$is_indel_dv_s_fc==1 )
+        k <- mt_thresholdI[k,]
+        accuracy_indels <- calc_accuracy_measures(k, method_names_i, truth_name)
+        k <- which( mt_thresholdI$is_indel_dv_s_fc==0 )
+        k <- mt_thresholdI[k,]
+        accuracy_snps <- calc_accuracy_measures(k, method_names_i, truth_name)
+        accuracy_indels_snps <- rbind(accuracy_indels, accuracy_snps)
+        accuracy_indels_snps <- data.frame(accuracy_indels_snps)
+        accuracy_indels_snps$variant <- c("indel", "snp")
+        accuracy_indels_snps$method <- method_names_i
+        accuracy_indels_snps
+      })
+      accur_thresholdI <- do.call(rbind, accur_thresholdI)
+      accur_thresholdI$coverage_threshold  <- threshold_i
+      accur_thresholdI
+    }else{
+      accur_thresholdI <- sapply(method_names, function(method_names_i) {
+        calc_accuracy_measures(mt_thresholdI, method_names_i, truth_name)
+      })
+      accur_thresholdI <- data.frame(accur_thresholdI)
+      accur_thresholdI <- rownames_to_column(accur_thresholdI, "measure")
+      cbind( accur_thresholdI, coverage_threshold=threshold_i )
+    }
+  })
+  if(indels_snps_separated){
+    dat <- bind_rows(mt_thresholdI_methodJ) 
+    names(dat) [names(dat) == "sensitivity"] <- "recall"
+    dat$variant <- factor(dat$variant, levels=c("indel", "snp"))
+    dat$method <- factor(dat$method)
+    dat$coverage_threshold <- factor(dat$coverage_threshold,
+                                     levels=sort(coverage_threshold),
+                                     ordered=TRUE)
+    if( !is.null(output_method_names) ){
+      if( length(method_names) != length(output_method_names) ){
+        stop("The lengths of method_names and output_method_names must be equal.")
+      }
+      stopifnot( identical(method_names, levels(dat$method)) )
+      levels(dat$method) <- output_method_names
+    }
+    
+    names(dat) [names(dat) == "coverage_threshold"] <- "coverage >= n"
+    
+    p <- ggplot(dat, aes(.data$recall, .data$precision, fill=.data$method, colour=.data$method)) +
+      geom_point(aes(shape=.data$variant, size=.data$`coverage >= n`), alpha=.5) +
+      geom_path(aes(linetype=.data$variant)) +
+      theme(text = element_text(size = 20)) +
+      ggtitle("Precision-recall curve for each method and different filters by\nread coverage, separated by SNPs and indes") 
+  }else{
+    k <- bind_rows(mt_thresholdI_methodJ) 
+    mt_thresholdI_methodJ <- gather(k, "method", "score",
+                                    -.data$measure, -.data$coverage_threshold,
+                                    factor_key=TRUE)
+    
+    if( !is.null(output_method_names) ){
+      if( length(method_names) != length(output_method_names) ){
+        stop("The lengths of method_names and output_method_names must be equal.")
+      }
+      stopifnot( identical(method_names, levels(mt_thresholdI_methodJ$method)) )
+      levels(mt_thresholdI_methodJ$method) <- output_method_names
+    }
+    
+    k <- mt_thresholdI_methodJ
+    dat_precision <- k[k$measure=="precision",]
+    dat_precision <- dat_precision[ ,names(dat_precision) != "measure" ]
+    names(dat_precision) [names(dat_precision) == "score"] <- "precision"
+    
+    dat_sensitivity <- k[k$measure=="sensitivity",]
+    dat_sensitivity <- dat_sensitivity[ ,names(dat_sensitivity) != "measure" ]
+    names(dat_sensitivity) [names(dat_sensitivity) == "score"] <- "sensitivity"
+    
+    dat <- left_join(dat_precision, dat_sensitivity)
+    names(dat) [names(dat) == "sensitivity"] <- "recall"
+    dat$coverage_threshold <- factor(dat$coverage_threshold, 
+                                     levels=sort(coverage_threshold), 
+                                     ordered=TRUE)
+    
+    names(dat) [names(dat) == "coverage_threshold"] <- "coverage >= n"
+    
+    p <- ggplot(dat, aes(.data$recall, .data$precision, fill=.data$method, colour=.data$method)) +
+      geom_point(aes(size=.data$`coverage >= n`), alpha=.5) +
+      geom_path() +
+      theme(text = element_text(size = 20)) +
+      ggtitle("Precision-recall curve for each method and different filters by\nread coverage")
+  }
+  
+  p
+}
+
+
+
+
+
+
+
 #' Add a INFO tag from a VCF file to a master table
 #' 
 #' If a variant in the VCF file doesn'r contain the specified tag, the function
