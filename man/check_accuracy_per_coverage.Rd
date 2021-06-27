@@ -10,8 +10,7 @@ check_accuracy_per_coverage(
   output_method_names = NULL,
   data_name,
   truth_name,
-  interval_start,
-  interval_end
+  coverage_threshold
 )
 }
 \arguments{
@@ -28,9 +27,8 @@ to be compared.}
 
 \item{truth_name}{A 1-length string. The name of the ground-truth.}
 
-\item{interval_start}{A vector of integers. The start position of all intervals.}
-
-\item{interval_end}{A vector of integers. The end position of all intervals.}
+\item{coverage_threshold}{A vector of integers. The minimum thresholds to filer 
+by read coverage.}
 }
 \value{
 A ggplot object.

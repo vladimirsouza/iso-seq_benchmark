@@ -110,8 +110,8 @@ calc_accuracy_measures <- function(input_table, method_name, truth_name) {
 #' @param data_name A 1-length string. The name of the dataset used with the methods 
 #'   to be compared.
 #' @param truth_name A 1-length string. The name of the ground-truth.
-#' @param interval_start A vector of integers. The start position of all intervals.
-#' @param interval_end A vector of integers. The end position of all intervals.
+#' @param coverage_threshold A vector of integers. The minimum thresholds to filer 
+#'   by read coverage.
 #'
 #' @return A ggplot object.
 #' 
@@ -127,41 +127,40 @@ check_accuracy_per_coverage <- function(master_table,
                                         output_method_names=NULL,
                                         data_name,
                                         truth_name, 
-                                        interval_start, interval_end) {
-  intervals <- matrix( c(interval_start, interval_end), byrow=TRUE, nrow=2) %>% 
-    data.frame
+                                        coverage_threshold){
   
-  mt_intervalI_methodJ <- lapply(intervals, function(interv) {
+  mt_thresholdI_methodJ <- lapply(coverage_threshold, function(coverage_threshold_i) {
     k <- master_table[ ,paste0(data_name, "_coverage") ]
-    mt_intervalI <- master_table[ k>=interv[1] & k<=interv[2], ]
+    mt_thresholdI <- master_table[ k>=coverage_threshold_i, ]
     
-    accur_intervalI_methodJ <- sapply(method_names, function(method_names_i) {
-      calc_accuracy_measures(mt_intervalI, method_names_i, truth_name)
+    accur_thresholdI_methodJ <- sapply(method_names, function(method_names_i) {
+      calc_accuracy_measures(mt_thresholdI, method_names_i, truth_name)
     })
     
-    k <- data.frame(accur_intervalI_methodJ)
+    k <- data.frame(accur_thresholdI_methodJ)
     k <- rownames_to_column(k, "measure")
-    cbind( k, interval=paste(interv, collapse="-") )
+    cbind( k, threshold=paste(coverage_threshold_i, collapse="-") )
   })
   
-  k <- bind_rows(mt_intervalI_methodJ) 
-  mt_intervalI_methodJ <- gather(k, "method", "score", -.data$measure, -.data$interval, factor_key=TRUE)
+  k <- bind_rows(mt_thresholdI_methodJ) 
+  mt_thresholdI_methodJ <- gather(k, "method", "score", -.data$measure, -.data$threshold, factor_key=TRUE)
   
   if( !is.null(output_method_names) ){
     if( length(method_names) != length(output_method_names) ){
       stop("The lengths of method_names and output_method_names must be equal.")
     }
-    stopifnot( identical(method_names, levels(mt_intervalI_methodJ$method)) )
-    levels(mt_intervalI_methodJ$method) <- output_method_names
+    stopifnot( identical(method_names, levels(mt_thresholdI_methodJ$method)) )
+    levels(mt_thresholdI_methodJ$method) <- output_method_names
   }
   
-  mt_intervalI_methodJ$measure <- factor(mt_intervalI_methodJ$measure)
+  mt_thresholdI_methodJ$measure <- factor(mt_thresholdI_methodJ$measure)
   
-  k <- sapply(unname(intervals), paste, collapse="-")
-  mt_intervalI_methodJ$interval <- factor(mt_intervalI_methodJ$interval, levels=k, ordered=TRUE)
+  mt_thresholdI_methodJ$threshold <- factor(mt_thresholdI_methodJ$threshold, 
+                                            levels=sort(coverage_threshold),
+                                            ordered=TRUE)
   
-  ggplot(mt_intervalI_methodJ, aes(x=.data$method, y=.data$score, fill=.data$method)) +
-    facet_grid(.data$measure~.data$interval) +
+  ggplot(mt_thresholdI_methodJ, aes(x=.data$method, y=.data$score, fill=.data$method)) +
+    facet_grid(.data$measure~.data$threshold) +
     geom_bar(stat="identity") +
     theme(axis.text.x = element_text(angle = 270)) +
     theme(legend.position="bottom") +
