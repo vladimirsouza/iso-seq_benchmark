@@ -11,8 +11,8 @@ precision_recall_curve_per_coverage(
   output_method_names = NULL,
   data_name,
   truth_name,
-  coverage_threshold,
-  indels_snps_separated
+  coverage_thresholds,
+  what
 )
 }
 \arguments{
@@ -28,12 +28,13 @@ to be compared.}
 
 \item{truth_name}{A 1-length string. The name of the ground-truth.}
 
-\item{coverage_threshold}{A vector of integers. The minimum thresholds to filer 
+\item{coverage_thresholds}{A vector of integers. The minimum thresholds to filer 
 by read coverage. Each element defines a point in the precision-recall curves.}
 
-\item{indels_snps_separated}{A 1-length logical vector. Default is equal to FALSE.
-If TRUE, each precision-recall curves is separated into two: one for indels
-and other for SNPs.}
+\item{what}{A 1-length string. Possible values are: "snps_indels" (default), to 
+make curves for SNPs and indels separately; "snps", to make curves only for
+SNPs; "indels", to make curves only for indels; "overall", to make curves 
+without distinguishing SNPs and indels.}
 }
 \value{
 A ggplot object.
