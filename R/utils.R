@@ -468,7 +468,9 @@ calculate_precision_recall_for_multi_master_tables <- function(
         
         if( what_l %in% c("snps_indels", "snps") ){
           snp_accur_thresholdI <- lapply(method_names_l, function(method_names_i){
-            k <- which( mt_thresholdI$is_indel_dv_s_fc==0 )
+            
+            k <- paste0("is_indel_", method_names_i)
+            k <- which(mt_thresholdI[,k] == 0)
             k <- mt_thresholdI[k,]
             calc_accuracy_measures(k, method_names_i, truth_names_l)
           })
@@ -481,7 +483,9 @@ calculate_precision_recall_for_multi_master_tables <- function(
         }
         if( what_l %in% c("snps_indels", "indels") ){
           indel_accur_thresholdI <- lapply(method_names_l, function(method_names_i){
-            k <- which( mt_thresholdI$is_indel_dv_s_fc==1 )
+            
+            k <- paste0("is_indel_", method_names_i)
+            k <- which(mt_thresholdI[,k] == 1)
             k <- mt_thresholdI[k,]
             calc_accuracy_measures(k, method_names_i, truth_names_l)
           })
