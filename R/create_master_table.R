@@ -439,7 +439,10 @@ add_two_method_comparison_to_master_table <- function(input_table, method1_name,
 #' @import dplyr
 #'
 #' @export
-add_method_vs_truth_comparison_to_master_table <- function(input_table, method_name, truth_name, replace_column=FALSE) {
+add_method_vs_truth_comparison_to_master_table <- function(input_table,
+                                                           method_name,
+                                                           truth_name,
+                                                           replace_column=FALSE){
   method_classification <- data.frame(
     in_method=c(1,1,0,0),
     in_truth=c(1,0,1,0),
@@ -454,15 +457,29 @@ add_method_vs_truth_comparison_to_master_table <- function(input_table, method_n
   truth_name_in <- paste0("in_", truth_name)
   names(method_classification) <- c(method_name_in, truth_name_in, classify_method_name)
   
+  if( !all( c(method_name_in, truth_name_in) %in% names(input_table) ) ){
+    stop( gettextf("The input master table doesn't contain all columns: '%s' and '%s'.",
+                   method_name_in, truth_name_in) )
+  }
+  
   if(replace_column){
+    if( !any(names(input_table) == classify_method_name) ){
+      stop( gettextf("Column '%s' doesn't exist.", classify_method_name) )
+    }
+    
     classify_method_name_original <- paste0(classify_method_name, "_original")
-    names(input_table) [names(input_table) == classify_method_name] <- classify_method_name_original
+    k <- names(input_table) == classify_method_name
+    names(input_table) [k] <- classify_method_name_original
     input_table <- left_join(input_table, method_classification)
     input_table[,classify_method_name_original] <- input_table[,classify_method_name]
     input_table <- input_table[,-ncol(input_table)]
     names(input_table) [names(input_table) == classify_method_name_original] <- classify_method_name
     input_table
   }else{
+    if( any(names(input_table) == classify_method_name) ){
+      stop( gettextf("Column '%s' already exists.", classify_method_name) )
+    }
+    
     left_join(input_table, method_classification)
   }
 }
