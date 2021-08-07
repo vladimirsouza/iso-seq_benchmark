@@ -581,6 +581,309 @@ calculate_precision_recall_for_multi_master_tables <- function(
 
 
 
+#' For each N-cigar-read-count interval, calculate accuracy measures for 
+#'   multiple master tables
+#' 
+#' Create a data.frame with accuracy measures for multiple master tables and 
+#'   different intervals for N-cigar-read counts.
+#'
+#' @param ... Master tables.
+#' @param experiment_names Vector of strings. Name of the experiments in the same 
+#'   order of the master tables.
+#' @param method_names Vector or list of strings. Names of the methods to compare.
+#'   If all experiments compare the same methods, `method_names` can be a single
+#'   vector. Otherwise, `method_names` must be a list, in which each element 
+#'   specifies the names of the methods to compare for each experiment.
+#' @param output_method_names NULL (default), or a vector or a list of strings.
+#'   Names of the methods to output. 
+#' @param data_names Vector or list of strings.
+#' @param truth_names Vector or list of strings.
+#' @param start_n_cigar_read_percent_intervals vector of doubles. The start of
+#'   each interval of N-cigar-read counts.
+#' @param end_n_cigar_read_percent_intervals vector of doubles. The end of
+#'   each interval of N-cigar-read counts.
+#' @param what Vector or list of strings.
+#'
+#' @return A data.frame.
+#' @export
+calculate_precision_recall_for_n_cigar_read_count_intervarls <- function(
+  ...,
+  experiment_names,
+  method_names,
+  output_method_names=NULL,
+  data_names,
+  truth_names,
+  start_n_cigar_read_percent_intervals=c(0, 0.05, 0.9),
+  end_n_cigar_read_percent_intervals=c(0.05, 0.9, 1),
+  what
+){
+  
+  
+  # master_tables <- list(dat_jurkat_cover10to20, dat_wtc11_cover10to20)
+  # experiment_names <- c("jurkat", "wtc11")
+  # method_names <- c("dv", "dv_s", "dv_s_fc", "gatk_s")
+  # output_method_names = c("DV", "SNCR+DV", "SNCR+FC+DV", "SNCR+GATK")
+  # data_names <- "isoSeq"
+  # truth_names <- c("jurkat_dna_merged", "allen")
+  # start_n_cigar_read_percent_intervals <- c(0, 0.05, 0.9)
+  # end_n_cigar_read_percent_intervals <- c(0.05, 0.9, 1)
+  # what <- "snps_indels"
+  
+  
+  n_cigar_read_percent_intervals <- matrix(
+    c(start_n_cigar_read_percent_intervals,
+      end_n_cigar_read_percent_intervals),
+    ncol=2
+  )
+  
+  
+  master_tables <- list(...)
+  
+  stopifnot( length(experiment_names) == length(master_tables) )
+  
+  if( length(master_tables) == 1 ){
+    stopifnot( is.vector(method_names) & !is.list(method_names) )
+    
+    if( !is.null(output_method_names) ){
+      stopifnot( is.vector(output_method_names) & !is.list(output_method_names) )
+    }
+    
+    stopifnot( is.vector(data_names) & !is.list(data_names))
+    stopifnot( length(data_names)==1 )
+    
+    stopifnot( is.vector(truth_names) & !is.list(truth_names) )
+    stopifnot( length(truth_names)==1 )
+    
+    # stopifnot( is.vector(n_cigar_read_percent_intervals) & !is.list(n_cigar_read_percent_intervals) )
+    
+    stopifnot( is.vector(what) & !is.list(what) )
+    stopifnot( length(what)==1 )
+  }else{
+    mt_len <- length(master_tables)
+    
+    if( is.null(output_method_names) ){
+      output_method_names <- rep( list(output_method_names), mt_len )
+    }else{
+      if( is.vector(output_method_names) & !is.list(output_method_names) ){
+        stopifnot( length(output_method_names) == length(method_names) )
+        output_method_names <- rep( list(output_method_names), mt_len )
+      }else{
+        if( is.list(output_method_names) ){
+          stopifnot( length(output_method_names) == length(master_tables) )
+        }else{
+          stop("Check argument output_method_names")
+        }
+      }
+    }
+    
+    if( is.vector(method_names) & !is.list(method_names) ){
+      method_names <- rep( list(method_names), mt_len )
+    }else{
+      if( is.list(method_names) ){
+        stopifnot( length(method_names) == length(master_tables) )
+      }else{
+        stop("Check argument method_names")
+      }
+    }
+    
+    if( is.vector(data_names) & !is.list(data_names) ){
+      if( length(data_names) == 1 ){
+        data_names <- rep(data_names, mt_len)
+      }else{
+        stopifnot( length(data_names) == length(data_names) )
+      }
+    }else{
+      stop("Check argument data_names")
+    }
+    
+    if( is.vector(truth_names) & !is.list(truth_names) ){
+      if( length(truth_names) == 1 ){
+        truth_names <- rep(truth_names, mt_len)
+      }else{
+        stopifnot( length(truth_names) == length(truth_names) )
+      }
+    }else{
+      stop("Check argument truth_names")
+    }
+    
+    # if( is.vector(n_cigar_read_percent_intervals) & !is.list(n_cigar_read_percent_intervals) ){
+    #   n_cigar_read_percent_intervals <- rep( list(n_cigar_read_percent_intervals), mt_len )
+    # }else{
+    #   if( is.list(n_cigar_read_percent_intervals) ){
+    #     stopifnot( length(n_cigar_read_percent_intervals) == length(master_tables) )
+    #   }else{
+    #     stop("Check argument n_cigar_read_percent_intervals")
+    #   }
+    # }
+    n_cigar_read_percent_intervals <- rep(
+      list(n_cigar_read_percent_intervals),
+      mt_len
+    )
+  }
+  
+  if( is.vector(what) & !is.list(what) ){
+    if( length(what) == 1 ){
+      what <- rep(what, mt_len)
+    }else{
+      stopifnot( length(what) == length(what) )
+    }
+  }else{
+    stop("Check argument what")
+  }
+  
+  
+  
+  dat_mts <- mapply(
+    function(master_tables_l,
+             method_names_l,
+             output_method_names_l,
+             data_names_l,
+             truth_names_l,
+             n_cigar_read_percent_intervals_l,
+             what_l,
+             experiment_names_l){
+      
+      # master_tables_l <- master_tables[[2]]
+      # method_names_l <- method_names[[2]]
+      # output_method_names_l <- output_method_names[[2]]
+      # data_names_l <- data_names[[2]]
+      # truth_names_l <- truth_names[[2]]
+      # n_cigar_read_percent_intervals_l <- n_cigar_read_percent_intervals[[2]]
+      # what_l <- what[[2]]
+      # experiment_names_l <- experiment_names[[2]]
+      
+      
+      
+      
+      if( !any(what_l %in% c("snps_indels", "snps", "indels", "overall")) ){
+        stop("`what` argument must be either \"snps_indels\", \"snps\", \"indels\", or \"overall\"")
+      }
+      
+      mt_intervalI_methodJ <- apply(n_cigar_read_percent_intervals_l, 1, function(interval_i) {
+        # interval_i <- n_cigar_read_percent_intervals_l[1,]
+        
+        k <- master_tables_l[ ,paste0("percent_n_cigar_reads") ]
+        mt_intervalI <- master_tables_l[ k>=interval_i[1] & k<interval_i[2], ]
+        
+        if( what_l %in% c("snps_indels", "snps") ){
+          snp_accur_thresholdI <- lapply(method_names_l, function(method_names_i){
+            # method_names_i <- method_names_l[[1]]
+            
+            k <- which( mt_intervalI$is_indel_dv_s_fc==0 )
+            k <- mt_intervalI[k,]
+            calc_accuracy_measures(k, method_names_i, truth_names_l)
+          })
+          snp_accur_thresholdI <- do.call(rbind, snp_accur_thresholdI)
+          snp_accur_thresholdI <- data.frame(snp_accur_thresholdI)
+          interval_i <- paste0("[", interval_i[1], "-", interval_i[2], ")")
+          snp_accur_thresholdI <- cbind(snp_accur_thresholdI,
+                                        variant="snps",
+                                        method=method_names_l,
+                                        n_cigar_read_percent_intervals=interval_i)
+        }
+        if( what_l %in% c("snps_indels", "indels") ){
+          indel_accur_thresholdI <- lapply(method_names_l, function(method_names_i){
+            k <- which( mt_intervalI$is_indel_dv_s_fc==1 )
+            k <- mt_intervalI[k,]
+            calc_accuracy_measures(k, method_names_i, truth_names_l)
+          })
+          indel_accur_thresholdI <- do.call(rbind, indel_accur_thresholdI)
+          indel_accur_thresholdI <- data.frame(indel_accur_thresholdI)
+          indel_accur_thresholdI <- cbind(indel_accur_thresholdI,
+                                          variant="indels",
+                                          method=method_names_l,
+                                          n_cigar_read_percent_intervals=interval_i)
+        }
+        if( what_l == "overall" ){
+          overall_accur_thresholdI <- lapply(method_names_l, function(method_names_i){
+            k <- mt_intervalI
+            calc_accuracy_measures(k, method_names_i, truth_names_l)
+          })
+          overall_accur_thresholdI <- do.call(rbind, overall_accur_thresholdI)
+          overall_accur_thresholdI <- data.frame(overall_accur_thresholdI)
+          overall_accur_thresholdI <- cbind(overall_accur_thresholdI,
+                                            variant="overall",
+                                            method=method_names_l,
+                                            n_cigar_read_percent_intervals=interval_i)
+        }
+        
+        accur_thresholdI <- switch(
+          what_l, 
+          "snps_indels"={
+            rbind(snp_accur_thresholdI, indel_accur_thresholdI)
+          },
+          "snps"={
+            snp_accur_thresholdI
+          },
+          "indels"={
+            indel_accur_thresholdI
+          },
+          "overall"={
+            overall_accur_thresholdI
+          }
+        )
+      })
+      
+      dat <- do.call(rbind, mt_intervalI_methodJ) 
+      names(dat) [names(dat) == "sensitivity"] <- "recall"
+      dat$variant <- factor(dat$variant)
+      dat$method <- factor(dat$method)
+      
+      
+      k <- apply(n_cigar_read_percent_intervals_l, 1, function(x){
+        paste0()
+      })
+      dat$n_cigar_read_percent_intervals <- factor(dat$n_cigar_read_percent_intervals,
+                                                   levels=sort(unique(dat$n_cigar_read_percent_intervals)),
+                                                   ordered=TRUE)
+      if( !is.null(output_method_names_l) ){
+        if( length(method_names_l) != length(output_method_names_l) ){
+          stop("The lengths of `method_names` and `output_method_names` must be equal.")
+        }
+        stopifnot( identical(method_names_l, levels(dat$method)) )
+        levels(dat$method) <- output_method_names_l
+      }
+      names(dat) [names(dat) == "n_cigar_read_percent_intervals"] <- "% N-cigar reads"
+      
+      dat <- cbind(dat, experiment=experiment_names_l)
+      
+    },
+    master_tables,
+    method_names,
+    output_method_names,
+    data_names,
+    truth_names,
+    n_cigar_read_percent_intervals,
+    what,
+    experiment_names,
+    SIMPLIFY=FALSE
+  )
+  dat_mts <- do.call(rbind, dat_mts)
+  
+  dat_mts
+  
+  # p <- ggplot(dat_mts, aes(.data$recall, .data$precision,
+  #                          fill=.data$method, colour=.data$method)) +
+  #   facet_grid(experiment~.)    ####### <<<<<--------=== not using .data$
+  # if(what == "snps_indels"){
+  #   p <- p +
+  #     geom_point(aes(shape=.data$variant, size=.data$`coverage >= n`), alpha=.5) +
+  #     geom_path(aes(linetype=.data$variant))
+  # }else{
+  #   p <- p +
+  #     geom_point(aes(size=.data$`coverage >= n`), alpha=.5) +
+  #     geom_path()
+  # }
+  # p <- p +
+  #   coord_fixed(ratio=1) +
+  #   theme(text = element_text(size = 20))
+  # 
+  # p
+}
+
+
+
+
 
 
 
