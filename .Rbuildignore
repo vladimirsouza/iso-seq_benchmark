@@ -2,3 +2,5 @@
 ^\.Rproj\.user$
 ^README\.Rmd$
 ^data/info\.txt$
+^scripts$
+^scripts_to_call_variants$
