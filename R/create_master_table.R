@@ -297,12 +297,12 @@ add_splice_site_info_to_master_table <- function(input_table,
 #' @export
 add_read_coverage_from_bam_to_master_table <- function(..., input_table, dataset_names) {
   datasets_coverage <- list(...)
-
+  
   if( length(datasets_coverage) != length(dataset_names) ) {
     stop("Length of dataset_names must be the same as the number of objects in '...'.")
   }
-
-  datasets_coverage_per_site <- sapply(datasets_coverage, function(cover_datasetI) {
+  
+  datasets_coverage_per_site <- lapply(datasets_coverage, function(cover_datasetI) {
     table_cover_datasetI <- seq_along(cover_datasetI) %>%
       lapply(function(i) {
         chrm_i <- names(cover_datasetI)[i]
@@ -312,13 +312,22 @@ add_read_coverage_from_bam_to_master_table <- function(..., input_table, dataset
         coverage_per_site <- as.vector( cover_datasetI[[i]] ) [input_table_i$pos]
         cbind(input_table_i, coverage_per_site)
       })
-    table_cover_datasetI <- bind_rows(table_cover_datasetI)
-    right_join(table_cover_datasetI, input_table) %>%
-      pull(.data$coverage_per_site)
+    bind_rows(table_cover_datasetI)
   })
-  colnames(datasets_coverage_per_site) <- paste0(dataset_names, "_coverage")
-
-  cbind(input_table, datasets_coverage_per_site)
+  datasets_coverage_per_site <- bind_rows(datasets_coverage_per_site)
+  
+  k <- names(datasets_coverage_per_site) == "coverage_per_site"
+  colnames(datasets_coverage_per_site) [k] <- paste0(dataset_names, "_coverage")
+  
+  # rows of the ouput in the same order of input_table
+  k <- paste(datasets_coverage_per_site$chrm, datasets_coverage_per_site$pos, sep="-")
+  k1 <- paste(input_table$chrm, input_table$pos, sep="-")
+  stopifnot( length(k)==length(k1) )
+  stopifnot( anyDuplicated(k)==0 )
+  stopifnot( anyDuplicated(k1)==0 )
+  stopifnot( setequal(k,k1) )
+  k <- order( factor(k, levels=k1, ordered=TRUE) )
+  datasets_coverage_per_site[k,]
 }
 
 
