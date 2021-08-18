@@ -529,7 +529,7 @@ calculate_precision_recall_for_multi_master_tables <- function(
       dat <- do.call(rbind, mt_thresholdI_methodJ) 
       names(dat) [names(dat) == "sensitivity"] <- "recall"
       dat$variant <- factor(dat$variant)
-      dat$method <- factor(dat$method)
+      dat$method <- factor(dat$method, levels=method_names_l)
       dat$coverage_thresholds <- factor(dat$coverage_thresholds,
                                         levels=sort(coverage_thresholds_l),
                                         ordered=TRUE)
