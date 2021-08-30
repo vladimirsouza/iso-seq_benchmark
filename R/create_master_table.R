@@ -487,6 +487,87 @@ add_method_vs_truth_comparison_to_master_table <- function(input_table,
 
 
 
+#' Add a column that states the variant type according a method or the ground truth
+#' 
+#' The new column stores the values "snp", "insertion", or "deletion",
+#'   respectively to the variant type. If the variant type can not be defined --
+#'   because the variant is heterozygous alternative and the alleles are a mix
+#'   between SNP, insertion, or deletion -- the value returned is "mix".
+#' 
+#' @param input_table A data.frame. The master table to add the new column.
+#' @param vcf_file 1-length string. The address of the ground-truth VCF file.
+#' @param method_name 1-length string. The name of the ground-truth.
+#' 
+#' @return A data.frame
+#' 
+#' @importFrom vcfR read.vcfR
+#' 
+#' @export
+add_variant_type_to_master_table <- function(input_table, vcf_file, method_name) {
+  
+  vcf <- read.vcfR(vcf_file)
+  k <- sub(":.+", "", vcf@gt[,2])
+  k_gt <- strsplit(k, "/|\\|")
+  
+  k_alt <- strsplit(vcf@fix[,5], ",")
+  
+  alt_len <- mapply(function(g, a){
+    g <- as.integer(g[g!="0"])
+    nchar(a[g])
+  }, k_gt, k_alt, SIMPLIFY=FALSE)
+  ref_len <- nchar(vcf@fix[,4])
+  
+  variant_type <- mapply(function(g, a, r){
+    
+    ### there are situations in which a heterozygous alternative could 
+    ### show alleles that are different types of variants, but i haven't
+    ### addressed all of them here. examples of these situations are:
+    ### * snps and insertions: ref=A ; alt=A,AT
+    ### * snps and deletions: ref=AT ; alt=A,TT
+    ### * insertions and deletions: ref=AT ; alt=A,AAT (need to confirm this)
+    
+    
+    ### check whether it's het alt, and the alleles are an insertion and a snp.
+    if( any(g=="2") ){
+      if( r==1 & sum(a==1)==1 ){
+        "mix"
+      }else{
+        ifelse(r==1, "insertion", "deletion")
+      }
+    }else{
+      if( any( c(a,r) != 1 ) ){
+        ifelse(r==1, "insertion", "deletion")
+      }else{
+        "snp"
+      }
+    }
+  }, k_gt, alt_len, ref_len)
+  
+  k <- paste(vcf@fix[,1], vcf@fix[,2])
+  variant_type <- setNames(variant_type, k)
+  
+  k <- paste0("in_", method_name)
+  in_vcf <- input_table[,k] == 1
+  k <- paste(input_table$chrm[in_vcf], input_table$pos[in_vcf])
+  
+  stopifnot( length(variant_type) == length(k) & 
+               setequal(names(variant_type), k) )
+  variant_type <- variant_type[k]
+  
+  k <- paste0("variantType_", method_name)
+  input_table[,k] <- NA
+  input_table[,k] [in_vcf] <- unname(variant_type)
+  
+  input_table
+}
+
+
+
+
+
+
+
+
 
 
 #' Add column that states whether the variant in the ground-truth is an indel or not
