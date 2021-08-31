@@ -933,6 +933,54 @@ add_info_tag_from_vcf <- function(input_table, col_name=NULL, tag, vcf_file){
 
 
 
+
+
+
+
+#' Add a FORMAT tag from a VCF file to a master table
+#' 
+#' If a variant in the VCF file doesn't contain the specified tag, the function
+#' return -1 for that variant.
+#' 
+#' @param input_table A data.frame. The input master table.
+#' @param col_name A 1-length string. the name of the column to add.
+#' @param tag A 1-length string. The name of the tag to add. It must be exactly
+#'   how the tag is written in the VCF file (case sensitive).
+#' @param vcf_file A 1-length string. The path to the VCF file from which the tag
+#'   is extracted.
+#'
+#' @return A data.frame.
+#' 
+#' @importFrom vcfR read.vcfR
+#' @importFrom dplyr left_join
+#' 
+#' @export
+add_format_tag_from_vcf <- function(input_table, col_name, tag, vcf_file){
+  
+  vcf <- read.vcfR(vcf_file)
+  
+  cmds <- gettextf("bcftools query -f '%%CHROM %%POS[ %%%s]\n' %s",
+                   tag, vcf_file)
+  gts <- system(cmds, intern=TRUE)
+  gts <- strsplit(gts, " ")
+  gts <- do.call(rbind, gts)
+  stopifnot( all(vcf@fix[,1:2] == gts[,-3]) )
+  gts <- data.frame(gts)
+  names(gts) <- c("chrm", "pos", col_name)
+  gts$pos <- as.integer(gts$pos)
+  res <- left_join(input_table, gts)
+  stopifnot( identical(input_table[,1:2], res[,1:2]) )
+  
+  res
+}
+
+
+
+
+
+
+
+
 #' Add some statistic of a tag about reads of a BAM file
 #'
 #' @param input_table A data.frame. The input master table.
