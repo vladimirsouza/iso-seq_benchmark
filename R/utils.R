@@ -1119,3 +1119,40 @@ standardize_genotype <- function(gt){
 
 
 
+#' get the genotype and the variant type of the calls of a primary and 
+#' secundary method
+#' 
+#' Create a new data.frame from a input master table. The rows correspond to
+#'   the same variants in `input_table` and in the same order.
+#'
+#' @param input_table A data.frame. The input master table.
+#' @param gt_first A 1-length string. The name of the column that stores the
+#'   genotypes called by a method. This method is called the first method.
+#' @param gt_second A 1-length string. If the first method does not call some 
+#'   variants, extract their genotype from column `gt_second`.
+#' @param vt_first A 1-length string. The name of the column that stores the
+#'   variant type called by a method. This method is called the first method.
+#' @param vt_second A 1-length string. If the first method does not call some 
+#'   variants, extract their variant type from column `vt_second`.
+#'
+#' @return A data.frame.
+#' 
+#' @export
+gt_vt_method <- function(input_table, gt_first, gt_second, vt_first, vt_second){
+  
+  ### genotype (gt)
+  gt <- input_table[,gt_first]
+  k <- is.na(gt) | gt=="0/0"
+  gt[k] <- input_table[,gt_second] [k]
+  
+  ### gt -- standardized 
+  gt_sd <- standardize_genotype(gt)
+  
+  ### variant type (vt)
+  vt <- input_table[,vt_first]
+  k <- is.na(vt)
+  vt[k] <- input_table[,vt_second] [k]
+  
+  data.frame(gt, gt_sd, vt)
+}
+
