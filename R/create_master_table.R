@@ -649,3 +649,47 @@ add_a_method_indel_information_to_master_table <- function(input_table, vcf_file
 
 
 
+
+
+
+#' Add homopolymer lengths to a master table
+#' 
+#' This function adds to the master table a column with the lengths of
+#'   homopolymers, from the reference fasta, that overlaps positions POS + 1,
+#'   where POS is the position of a variant. POS + 1 makes sence because
+#'   minimp2 places homopolymer indels to the left of homopolymers, and , in
+#'   case of indels, the column POS of VCF files means the position immediately
+#'   to the left of the indel. In this way, homopolymer lengths of SNPs are
+#'   meaningless. Moreover, homopolymer lengths of variants that are
+#'   heterozygous alternatives should be meaningless as well. That is because
+#'   they could contain alleles that are SNPs.
+#'
+#' @param input_table A data.frame. The master table to add the new column.
+#' @param homopolymers A CompressedIRangesList object. It should store all 
+#'   homopolymers, it's nucleotive types and lengths, of the genome used as
+#'   the reference to call the variants. It is gerated by the function
+#'   `sarlacc::homopolymers`.
+#' 
+#' @return A data.frame
+#' 
+#' @import IRanges
+#' 
+#' @export
+add_homopolymer_length_when_indels <- function(input_table, homopolymers){
+  
+  ### add homopolymer length into master table
+  input_table_split <- split(input_table, input_table$chrm)
+  homopolymers <- homopolymers[ names(input_table_split) ]
+  input_table_split_hom <- mapply(function(d, h){
+    d_pos <- IRanges( d$pos+1, width=1 )
+    ovl <- findOverlaps(d_pos, h)
+    homopolymer_length_indel <- rep(1L, nrow(d))
+    homopolymer_length_indel[ queryHits(ovl) ] <- width(h) [ subjectHits(ovl) ]
+    cbind(d, homopolymer_length_indel)
+  }, input_table_split, homopolymers, SIMPLIFY=FALSE)
+  input_table_hom <- do.call(rbind, input_table_split_hom)
+  rownames(input_table_hom) <- NULL
+  stopifnot( identical(input_table[,1:2], input_table_hom[,1:2]) )
+  
+  input_table_hom
+}
