@@ -1076,3 +1076,46 @@ add_variant_density_of_a_method <- function(input_table, window_size, used_metho
   
   input_table
 }
+
+
+
+
+
+
+#' Standardize genotypes
+#' 
+#' This function rewrite genotype like:
+#' * 0|1 to 0/1;
+#' * 0/2, 0/3, ..., to 0/1;
+#' * 2/2, 3/3, ..., to 1/1;
+#' * 1/3, 2/3, ..., to 1/2
+#'
+#' @param gt A vector of strings. The input genotypes.
+#' 
+#' @importFrom stringr str_split
+#'
+#' @return A vector of strings.
+#' @export
+standardize_genotype <- function(gt){
+  gt_sd <- sub("\\|", "/", gt)
+  gt_sd_split <- str_split(gt_sd, "/", simplify=TRUE)
+  # heterozigous
+  het <- apply(gt_sd_split=="0", 1, sum)
+  het <- het==1
+  gt_sd[het] <- "0/1"
+  gt_sd_split[het, 2] <- "1"
+  # homozigous alternative
+  homAlt <- gt_sd_split[,1] != "0" & gt_sd_split[,1]==gt_sd_split[,2]
+  gt_sd[homAlt] <- "1/1"
+  gt_sd_split[homAlt, 1] <- "1"
+  gt_sd_split[homAlt, 2] <- "1"
+  # heterozygous alternative
+  hetRef <- gt_sd=="0/0"
+  hetAlt <- !hetRef & !het & !homAlt
+  gt_sd[hetAlt] <- "1/2"
+  gt_sd
+}
+
+
+
+

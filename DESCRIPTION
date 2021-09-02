@@ -22,7 +22,8 @@ Imports:
   tibble,
   tidyr,
   vcfR,
-  GenomicRanges
+  GenomicRanges,
+  stringr
 License: GPL-2
 Encoding: UTF-8
 LazyData: true
