@@ -9,9 +9,9 @@ add_variant_type_to_master_table(input_table, vcf_file, method_name)
 \arguments{
 \item{input_table}{A data.frame. The master table to add the new column.}
 
-\item{vcf_file}{1-length string. The address of the ground-truth VCF file.}
+\item{vcf_file}{1-length string. The address of the VCF file.}
 
-\item{method_name}{1-length string. The name of the ground-truth.}
+\item{method_name}{1-length string. The name of the ground-truth or method.}
 }
 \value{
 A data.frame

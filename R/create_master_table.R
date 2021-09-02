@@ -495,8 +495,8 @@ add_method_vs_truth_comparison_to_master_table <- function(input_table,
 #'   between SNP, insertion, or deletion -- the value returned is "mix".
 #' 
 #' @param input_table A data.frame. The master table to add the new column.
-#' @param vcf_file 1-length string. The address of the ground-truth VCF file.
-#' @param method_name 1-length string. The name of the ground-truth.
+#' @param vcf_file 1-length string. The address of the VCF file.
+#' @param method_name 1-length string. The name of the ground-truth or method.
 #' 
 #' @return A data.frame
 #' 
@@ -506,8 +506,10 @@ add_method_vs_truth_comparison_to_master_table <- function(input_table,
 add_variant_type_to_master_table <- function(input_table, vcf_file, method_name) {
   
   vcf <- read.vcfR(vcf_file)
-  k <- sub(":.+", "", vcf@gt[,2])
-  k_gt <- strsplit(k, "/|\\|")
+  
+  k_gt <- sub(":.+", "", vcf@gt[,2])
+  k_gt <- standardize_genotype(k_gt)
+  k_gt <- strsplit(k_gt, "/")
   
   k_alt <- strsplit(vcf@fix[,5], ",")
   
@@ -518,7 +520,6 @@ add_variant_type_to_master_table <- function(input_table, vcf_file, method_name)
   ref_len <- nchar(vcf@fix[,4])
   
   variant_type <- mapply(function(g, a, r){
-    
     ### there are situations in which a heterozygous alternative could 
     ### show alleles that are different types of variants, but i haven't
     ### addressed all of them here. examples of these situations are:
@@ -526,14 +527,20 @@ add_variant_type_to_master_table <- function(input_table, vcf_file, method_name)
     ### * snps and deletions: ref=AT ; alt=A,TT
     ### * insertions and deletions: ref=AT ; alt=A,AAT (need to confirm this)
     
-    
-    ### check whether it's het alt, and the alleles are an insertion and a snp.
     if( any(g=="2") ){
-      if( r==1 & sum(a==1)==1 ){
-        "mix"
-      }else{
-        ifelse(r==1, "insertion", "deletion")
-      }
+      ### need to write this part of the code to find variant type "mix".
+      
+      # ### check whether it's het alt, and the alleles are an insertion and a snp.
+      # if( r==1 & sum(a==1)==1 ){
+      #   "mix"
+      # }else{
+      #   if( all(c(r,a)==1) ){
+      #     "snp"
+      #   }else{
+      #     ifelse(r==1, "insertion", "deletion")
+      #   }
+      # }
+      "hetAlt"
     }else{
       if( any( c(a,r) != 1 ) ){
         ifelse(r==1, "insertion", "deletion")
