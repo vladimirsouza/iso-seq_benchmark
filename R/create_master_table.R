@@ -508,8 +508,9 @@ add_variant_type_to_master_table <- function(input_table, vcf_file, method_name)
   vcf <- read.vcfR(vcf_file)
   
   k_gt <- sub(":.+", "", vcf@gt[,2])
-  k_gt <- standardize_genotype(k_gt)
-  k_gt <- strsplit(k_gt, "/")
+  k_gt_sd <- standardize_genotype(k_gt)
+  k_gt <- strsplit(k_gt, "/|\\|")
+  k_gt_sd <- strsplit(k_gt_sd, "/")
   
   k_alt <- strsplit(vcf@fix[,5], ",")
   
@@ -519,36 +520,28 @@ add_variant_type_to_master_table <- function(input_table, vcf_file, method_name)
   }, k_gt, k_alt, SIMPLIFY=FALSE)
   ref_len <- nchar(vcf@fix[,4])
   
-  variant_type <- mapply(function(g, a, r){
+  variant_type <- mapply(function(g, g_sd, a, r){
     ### there are situations in which a heterozygous alternative could 
     ### show alleles that are different types of variants, but i haven't
     ### addressed all of them here. examples of these situations are:
-    ### * snps and insertions: ref=A ; alt=A,AT
+    ### * snps and insertions: ref=A ; alt=T,AT
     ### * snps and deletions: ref=AT ; alt=A,TT
-    ### * insertions and deletions: ref=AT ; alt=A,AAT (need to confirm this)
-    
-    if( any(g=="2") ){
-      ### need to write this part of the code to find variant type "mix".
-      
-      # ### check whether it's het alt, and the alleles are an insertion and a snp.
-      # if( r==1 & sum(a==1)==1 ){
-      #   "mix"
-      # }else{
-      #   if( all(c(r,a)==1) ){
-      #     "snp"
-      #   }else{
-      #     ifelse(r==1, "insertion", "deletion")
-      #   }
-      # }
-      "hetAlt"
+    ### * insertions and deletions: ref=AT ; alt=A,ATT (need to confirm this)
+    if( all(g_sd=="0") ){
+      "homRef"
     }else{
-      if( any( c(a,r) != 1 ) ){
-        ifelse(r==1, "insertion", "deletion")
+      if( any(g_sd=="2") ){
+        ### need to write this part of the code to find variant type "mix".
+        "hetAlt"
       }else{
-        "snp"
+        if( r==unique(a) ){
+          "snp"
+        }else{
+          ifelse(r>unique(a), "deletion", "insertion")
+        }
       }
     }
-  }, k_gt, alt_len, ref_len)
+  }, k_gt, k_gt_sd, alt_len, ref_len)
   
   k <- paste(vcf@fix[,1], vcf@fix[,2])
   variant_type <- setNames(variant_type, k)
