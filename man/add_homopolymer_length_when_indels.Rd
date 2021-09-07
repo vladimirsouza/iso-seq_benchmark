@@ -4,7 +4,11 @@
 \alias{add_homopolymer_length_when_indels}
 \title{Add homopolymer lengths to a master table}
 \usage{
-add_homopolymer_length_when_indels(input_table, homopolymers)
+add_homopolymer_length_when_indels(
+  input_table,
+  homopolymers,
+  ouput_what = "length"
+)
 }
 \arguments{
 \item{input_table}{A data.frame. The master table to add the new column.}
@@ -13,6 +17,10 @@ add_homopolymer_length_when_indels(input_table, homopolymers)
 homopolymers, it's nucleotive types and lengths, of the genome used as
 the reference to call the variants. It is gerated by the function
 `sarlacc::homopolymers`.}
+
+\item{ouput_what}{A string equal to "length" (default) or "nts". If
+"length", the lengths of homopolymers are ouput (1 for non-homopolymers).
+If "nts", the nucleotide type is output (NA for non-homopolymers).}
 }
 \value{
 A data.frame

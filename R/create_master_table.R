@@ -669,27 +669,44 @@ add_a_method_indel_information_to_master_table <- function(input_table, vcf_file
 #'   homopolymers, it's nucleotive types and lengths, of the genome used as
 #'   the reference to call the variants. It is gerated by the function
 #'   `sarlacc::homopolymers`.
+#' @param ouput_what A string equal to "length" (default) or "nts". If
+#'   "length", the lengths of homopolymers are ouput (1 for non-homopolymers).
+#'   If "nts", the nucleotide type is output (NA for non-homopolymers).
 #' 
 #' @return A data.frame
 #' 
 #' @import IRanges
 #' 
 #' @export
-add_homopolymer_length_when_indels <- function(input_table, homopolymers){
+add_homopolymer_length_when_indels <- function(input_table, homopolymers, ouput_what="length"){
+  
+  k <- ouput_what %in% c("length", "nts")
+  if(!k){
+    stop("Argument 'ouput_what' must be either 'length' or 'nts'.")
+  }
   
   ### add homopolymer length into master table
   input_table_split <- split(input_table, input_table$chrm)
   homopolymers <- homopolymers[ names(input_table_split) ]
-  input_table_split_hom <- mapply(function(d, h){
+  input_table_hom <- mapply(function(d, h){
     d_pos <- IRanges( d$pos+1, width=1 )
     ovl <- findOverlaps(d_pos, h)
     homopolymer_length_indel <- rep(1L, nrow(d))
-    homopolymer_length_indel[ queryHits(ovl) ] <- width(h) [ subjectHits(ovl) ]
+    if(ouput_what=="length"){
+      homopolymer_length_indel[ queryHits(ovl) ] <- width(h) [ subjectHits(ovl) ]
+    }else{
+      homopolymer_length_indel[ queryHits(ovl) ] <- mcols(h)$base [ subjectHits(ovl) ]
+    }
     cbind(d, homopolymer_length_indel)
   }, input_table_split, homopolymers, SIMPLIFY=FALSE)
-  input_table_hom <- do.call(rbind, input_table_split_hom)
+  input_table_hom <- do.call(rbind, input_table_hom)
+  if(ouput_what=="nts"){
+    names(input_table_hom) [ncol(input_table_hom)] <- "homopolymer_nt_indel"
+    k <- input_table_hom$homopolymer_nt_indel == "1"
+    input_table_hom$homopolymer_nt_indel[k] <- NA
+  }
   rownames(input_table_hom) <- NULL
-  stopifnot( identical(input_table[,1:2], input_table_hom[,1:2]) )
+  stopifnot( all(input_table[,1:2] == input_table_hom[,1:2]) )
   
   input_table_hom
 }
