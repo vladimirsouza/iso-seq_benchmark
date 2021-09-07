@@ -1156,3 +1156,196 @@ gt_vt_method <- function(input_table, gt_first, gt_second, vt_first, vt_second){
   data.frame(gt, gt_sd, vt)
 }
 
+
+
+
+
+
+
+
+
+
+
+#' Get indels in homopolymers
+#' 
+#' Create a new data.frame that stores deletions of inside homopolymers, and
+#' insertions of a same nucleotide type that happen inside homopolymers of
+#' that same nucleotide type. Homopolymer length equal to 1 means
+#' non-homopolymers.
+#'
+#' @param input_table A data.frame. The input master table.
+#' @param gt_first A 1-length string. The name of the column that stores the
+#'   genotypes called by a method. This method is called the first method.
+#' @param gt_second A 1-length string. If the first method does not call some 
+#'   variants, extract their genotype from column `gt_second`.
+#' @param vt_first A 1-length string. The name of the column that stores the
+#'   variant type called by a method. This method is called the first method.
+#' @param vt_second A 1-length string. If the first method does not call some 
+#'   variants, extract their variant type from column `vt_second`.
+#' @param vcf_first A 1-length string. The path of the VCF file of the first
+#'   method.
+#' @param vcf_second A 1-length string. The path of the VCF file of the
+#'   second method.
+#' @param homopolymers A CompressedIRangesList object. It should store all 
+#'   homopolymers, it's nucleotive types and lengths, of the genome used as
+#'   the reference to call the variants. It is gerated by the function
+#'   `sarlacc::homopolymerFinder`.
+#' @param ref_fasta_seqs A DNAStringSet object. The sequences of the genome
+#'   used as the reference to call the variants. It's names must be in the
+#'   form like "chr1", "chr2", ..., "chrX", "chrY".
+#' @param min_isoseq_coverage min iso-seq read coverage to filter.
+#' @param genotyped_alt One of the strings "find" or "same". If "find", the
+#'   function finds the correct alternative allele based on the genotype. This
+#'   option must be chosen if there are multiple values for column ALT, which
+#'   is the case of VCF files output by DeepVariant and Clair3. Since GATK's
+#'   VCF files keep only the genotyped alternative allele in column ALT, this
+#'   argument should be "same".
+#'
+#' @return A data.frame.
+#' 
+#' @importFrom vcfR read.vcfR
+#' @importFrom dplyr left_join
+#' @importFrom Biostrings readDNAStringSet
+#' @importFrom IRanges IRanges
+#' @importFrom XVector subseq compact
+#' 
+#' @export
+method_homopolymer_indels <- function(input_table, gt_first, gt_second, vt_first,
+                                      vt_second, vcf_first, vcf_second, homopolymers,
+                                      ref_fasta_seqs, min_isoseq_coverage, genotyped_alt){
+  
+  stopifnot( genotyped_alt %in% c("find", "same") )
+  k <- grep("dv|c3|clair3", gt_second, ignore.case=TRUE)
+  if( identical(k,1L) ){
+    if(genotyped_alt!="find"){
+      message("It looks like the second method is DeepVariant or Clair3, but genotyped_alt is not 'find'.")
+      invisible(readline(prompt="Press [enter] to continue"))
+    }
+  }else{
+    k <- grep("gatk", gt_second, ignore.case=TRUE)
+    if( identical(k,1L) ){
+      if(genotyped_alt!="same"){
+        message("It looks like the second method is GATK, but genotyped_alt is not 'same'.")
+        invisible(readline(prompt="Press [enter] to continue"))
+      }
+    }
+  }
+  
+  ### genotype (gt)
+  gt <- input_table[,gt_first]
+  het <- is.na(gt) | gt=="0/0"
+  gt[het] <- input_table[,gt_second] [het]
+  
+  ### gt -- standardized 
+  gt_sd <- standardize_genotype(gt)
+  
+  ### variant type (vt)
+  vt <- input_table[,vt_first]
+  vt[het] <- input_table[,vt_second] [het]
+  
+  ### add ref/alt alleles from `vcf_first` to `input_table`
+  vcf_fst <- read.vcfR(vcf_first)
+  k <- vcf_fst@fix[ ,c("CHROM", "POS", "REF", "ALT") ]
+  k <- data.frame(k)
+  k <- rename(k, "chrm"="CHROM", "pos"="POS", "ref_fst"="REF", "alt_fst"="ALT")
+  k$pos <- as.integer(k$pos)
+  input_table <- left_join(input_table, k)
+  
+  ### add ref/alt alleles from `vcf_second` to `input_table`
+  vcf_snd <- read.vcfR(vcf_second)
+  k <- vcf_snd@fix[ ,c("CHROM", "POS", "REF", "ALT") ]
+  k <- data.frame(k)
+  k <- rename(k, "chrm"="CHROM", "pos"="POS", "ref_snd"="REF", "alt_snd"="ALT")
+  k$pos <- as.integer(k$pos)
+  input_table <- left_join(input_table, k)
+  
+  ### ref/alt alleles
+  ref_alt_alleles <- input_table[, c("ref_fst", "alt_fst")]
+  ref_alt_alleles[het,] <- input_table[het, c("ref_snd", "alt_snd")]
+  names(ref_alt_alleles) <- c("ref_allele", "alt_allele")
+  
+  ### make a data frame and filter
+  k <- sub("^gt_", "", gt_second)
+  k <- paste0(k, "_classification")
+  k <- c("chrm", "pos", "homopolymer_length_indel", "isoSeq_coverage", k)
+  res <- cbind( input_table[,k], gt, gt_sd, vt, ref_alt_alleles )
+  k <- (res$gt_sd %in% c("0/1", "1/1")) & (res$vt %in% c("insertion", "deletion"))
+  res <- res[k,]
+  
+  ### filter by iso-seq coverage
+  res <- res[res$isoSeq_coverage >= min_isoseq_coverage,]
+  
+  ### genotyped aternative allele
+  if(genotyped_alt=="find"){
+    k <- sub("^[0-9]+/", "", res$gt)
+    k <- as.integer(k)
+    alt_split <- strsplit(res$alt_allele, ",")
+    alt_genotyped <- mapply( function(a, ki){
+      a[ki]
+    }, alt_split, k)
+    res <- cbind(res, alt_genotyped)
+  }else{
+    res$alt_genotyped <- res$alt_allele
+  }
+  
+  ### there might be a mix between insertions and deletions. to make it simple,
+  ### removed all those cases
+  res <- res[ !(res$vt=="deletion" & nchar(res$alt_genotyped)>1), ]
+  res <- res[ !(res$vt=="insertion" & nchar(res$ref_allele)>1), ]
+  
+  ### deleted nts must be the same
+  res$ref_nts <- sub(".", "", res$ref_allele)
+  res$alt_nts <- sub(".", "", res$alt_genotyped)
+  
+  k <- strsplit(res$ref_nts, NULL)
+  k <- sapply(k, function(x){
+    unique(x)
+  })
+  k <- lengths(k)
+  stopifnot( all(k[res$vt=="insertion"]==0) )
+  res <- res[ !(res$vt=="deletion" & k!=1), ]
+  
+  ### inserted nts must be the same
+  k <- strsplit(res$alt_nts, NULL)
+  k <- sapply(k, function(x){
+    unique(x)
+  })
+  k <- lengths(k)
+  stopifnot( all(k[res$vt=="deletion"]==0) )
+  res <- res[ !(res$vt=="insertion" & k!=1), ]
+  
+  ### nts of indels and homopolymers (from genome of reference) must be the same
+  # add nt type of homopolymers
+  add_homopolymer_nt_when_indels <- add_homopolymer_length_when_indels
+  res <- add_homopolymer_nt_when_indels(res, homopolymers, ouput_what="nts")
+  # add nt type of non-homopolymers
+  res_split <- split(res, res$chrm)
+  ref_fasta_seqs <- ref_fasta_seqs[names(res_split)]
+  res_split <- lapply( seq_along(res_split), function(i){
+    r <- res_split[[i]]
+    s <- ref_fasta_seqs[i]
+    is_not_hom <- is.na(r$homopolymer_nt_indel)
+    k_pos <- r$pos[is_not_hom] +1
+    s <- rep(s, length(k_pos))
+    nts <- compact(
+      subseq(
+        s,
+        k_pos,
+        k_pos
+      )
+    )
+    r$homopolymer_nt_indel[is_not_hom] <- unname( as.vector(nts) )
+    r
+  })
+  res <- do.call(rbind, res_split)
+  
+  ### filter out insertions that the nts of the alternative allele are not the
+  ### same of the nts of the homopolymer in the reference fasta
+  k <- substring(res$alt_nts, 1, 1)
+  k <- res$vt=="insertion" & res$homopolymer_nt_indel!=k
+  res <- res[!k,]
+  
+  res
+}
+
+
