@@ -583,6 +583,8 @@ add_variant_type_to_master_table <- function(input_table, vcf_file, method_name)
 #' @export
 add_the_ground_truth_indel_information_to_master_table <- function(input_table, vcf_file, truth_name) {
   
+  warning("This function is obsolete. It was replaced by 'is_indel_method'")
+  
   vcf <- read.vcfR(vcf_file)
   k <- sub(":.+", "", vcf@gt[,2])
   k_gt <- strsplit(k, "/|\\|")
@@ -629,6 +631,9 @@ add_the_ground_truth_indel_information_to_master_table <- function(input_table, 
 #' 
 #' @export
 add_a_method_indel_information_to_master_table <- function(input_table, vcf_file, method_name, truth_name) {
+  
+  warning("This function is obsolete. It was replaced by 'is_indel_method'")
+  
   k <- paste0("is_indel_", truth_name)
   if( is.null(input_table[,k]) ) {
     stop_message <- gettextf("The column %s must exist in input_table.\nHave you forgotten to run add_the_ground_truth_indel_information_to_master_table?",
@@ -646,6 +651,56 @@ add_a_method_indel_information_to_master_table <- function(input_table, vcf_file
   
   input_table
 }
+
+
+
+
+
+
+
+#' Add a column to state whether the variant is an indel or not
+#' 
+#' To classify the variant as an indel, first the function looks at the VCF file
+#' of the `first_method`. If the variant is not there, if looks at the VCF file
+#' of the `second_method`.
+#' 
+#' Output meaning:
+#'   * `-1` means that the variant type couldn't be defined, because it is 
+#'     heterozygous alternative;
+#'   * `0` means it is not an indel;
+#'   * `1` means it is an indles;
+#'   * `NA` means the `first_method` (and the `second_method`) didn't call the
+#'     variant.
+#' 
+#' @param input_table A data.frame. The master table to add the new column.
+#' @param first_method A 1-length string. The name of the first method.
+#' @param second_method A 1-length string. The name of the second method
+#'
+#' @return A data.frame.
+#' 
+#' @export
+is_indel_method <- function(input_table, first_method, second_method=NULL){
+  vt_1st <- paste0("variantType_", first_method)
+  vt_2nd <- paste0("variantType_", second_method)
+  vt <- input_table[,vt_1st]
+  k <- is.na(vt)
+  if( !is.null(second_method) ){
+    vt[k] <- input_table[k, vt_2nd]
+  }else{
+    second_method <- first_method
+  }
+  
+  is_indel <- rep(-1, length(vt))
+  is_indel [ vt=="snp" ] <- 0
+  is_indel [ vt %in% c("deletion", "insertion") ] <- 1
+  is_indel [ is.na(vt) ] <- NA
+  
+  input_table <- cbind(input_table, is_indel)
+  names(input_table) [ncol(input_table)] <- paste0("is_indel_", second_method)
+  
+  input_table
+}
+
 
 
 
