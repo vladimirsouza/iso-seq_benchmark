@@ -4,12 +4,12 @@
 \alias{add_format_tag_from_vcf}
 \title{Add a FORMAT tag from a VCF file to a master table}
 \usage{
-add_format_tag_from_vcf(input_table, col_name, tag, vcf_file)
+add_format_tag_from_vcf(input_table, method_name, tag, vcf_file)
 }
 \arguments{
 \item{input_table}{A data.frame. The input master table.}
 
-\item{col_name}{A 1-length string. the name of the column to add.}
+\item{method_name}{A 1-length string. The name of the method.}
 
 \item{tag}{A 1-length string. The name of the tag to add. It must be exactly
 how the tag is written in the VCF file (case sensitive).}
@@ -21,6 +21,6 @@ is extracted.}
 A data.frame.
 }
 \description{
-If a variant in the VCF file doesn't contain the specified tag, the function
-return -1 for that variant.
+The function adds to `input_table` the new column <tagName>_<methodName>,
+  where <tagName> is `tag` in lower case and <methodName> is `method_name`.
 }

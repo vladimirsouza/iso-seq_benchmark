@@ -939,11 +939,11 @@ add_info_tag_from_vcf <- function(input_table, col_name=NULL, tag, vcf_file){
 
 #' Add a FORMAT tag from a VCF file to a master table
 #' 
-#' If a variant in the VCF file doesn't contain the specified tag, the function
-#' return -1 for that variant.
+#' The function adds to `input_table` the new column <tagName>_<methodName>,
+#'   where <tagName> is `tag` in lower case and <methodName> is `method_name`.
 #' 
 #' @param input_table A data.frame. The input master table.
-#' @param col_name A 1-length string. the name of the column to add.
+#' @param method_name A 1-length string. The name of the method.
 #' @param tag A 1-length string. The name of the tag to add. It must be exactly
 #'   how the tag is written in the VCF file (case sensitive).
 #' @param vcf_file A 1-length string. The path to the VCF file from which the tag
@@ -955,20 +955,21 @@ add_info_tag_from_vcf <- function(input_table, col_name=NULL, tag, vcf_file){
 #' @importFrom dplyr left_join
 #' 
 #' @export
-add_format_tag_from_vcf <- function(input_table, col_name, tag, vcf_file){
+add_format_tag_from_vcf <- function(input_table, method_name, tag, vcf_file){
   
   vcf <- read.vcfR(vcf_file)
   
   cmds <- gettextf("bcftools query -f '%%CHROM %%POS[ %%%s]\n' %s",
                    tag, vcf_file)
-  gts <- system(cmds, intern=TRUE)
-  gts <- strsplit(gts, " ")
-  gts <- do.call(rbind, gts)
-  stopifnot( all(vcf@fix[,1:2] == gts[,-3]) )
-  gts <- data.frame(gts)
-  names(gts) <- c("chrm", "pos", col_name)
-  gts$pos <- as.integer(gts$pos)
-  res <- left_join(input_table, gts)
+  x <- system(cmds, intern=TRUE)
+  x <- strsplit(x, " ")
+  x <- do.call(rbind, x)
+  stopifnot( all(vcf@fix[,1:2] == x[,-3]) )
+  x <- data.frame(x)
+  col_name <- paste( tolower(tag), method_name, sep="_")
+  names(x) <- c("chrm", "pos", col_name)
+  x$pos <- as.integer(x$pos)
+  res <- left_join(input_table, x)
   stopifnot( identical(input_table[,1:2], res[,1:2]) )
   
   res
