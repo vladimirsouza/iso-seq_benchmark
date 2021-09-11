@@ -1175,14 +1175,11 @@ gt_vt_method <- function(input_table, gt_first, gt_second, vt_first, vt_second){
 #' non-homopolymers.
 #'
 #' @param input_table A data.frame. The input master table.
-#' @param gt_first A 1-length string. The name of the column that stores the
-#'   genotypes called by a method. This method is called the first method.
-#' @param gt_second A 1-length string. If the first method does not call some 
-#'   variants, extract their genotype from column `gt_second`.
-#' @param vt_first A 1-length string. The name of the column that stores the
-#'   variant type called by a method. This method is called the first method.
-#' @param vt_second A 1-length string. If the first method does not call some 
-#'   variants, extract their variant type from column `vt_second`.
+#' @param first_method_name A 1-length string of the name of a method. First,
+#'   the variant information that is taken is related to this method. If a
+#'   variant is not called by the method, its information is taken relating
+#'   to the method specifiec in `second_method_name`.
+#' @param second_method_name A 1-length string. The name of a method.
 #' @param vcf_first A 1-length string. The path of the VCF file of the first
 #'   method.
 #' @param vcf_second A 1-length string. The path of the VCF file of the
@@ -1211,19 +1208,19 @@ gt_vt_method <- function(input_table, gt_first, gt_second, vt_first, vt_second){
 #' @importFrom XVector subseq compact
 #' 
 #' @export
-method_homopolymer_indels <- function(input_table, gt_first, gt_second, vt_first,
-                                      vt_second, vcf_first, vcf_second, homopolymers,
-                                      ref_fasta_seqs, min_isoseq_coverage, genotyped_alt){
+method_homopolymer_indels <- function(input_table, first_method_name, second_method_name,
+                                      vcf_first, vcf_second, homopolymers, ref_fasta_seqs,
+                                      min_isoseq_coverage, genotyped_alt){
   
   stopifnot( genotyped_alt %in% c("find", "same") )
-  k <- grep("dv|c3|clair3", gt_second, ignore.case=TRUE)
+  k <- grep("dv|c3|clair3", second_method_name, ignore.case=TRUE)
   if( identical(k,1L) ){
     if(genotyped_alt!="find"){
       message("It looks like the second method is DeepVariant or Clair3, but genotyped_alt is not 'find'.")
       invisible(readline(prompt="Press [enter] to continue"))
     }
   }else{
-    k <- grep("gatk", gt_second, ignore.case=TRUE)
+    k <- grep("gatk", second_method_name, ignore.case=TRUE)
     if( identical(k,1L) ){
       if(genotyped_alt!="same"){
         message("It looks like the second method is GATK, but genotyped_alt is not 'same'.")
@@ -1233,6 +1230,8 @@ method_homopolymer_indels <- function(input_table, gt_first, gt_second, vt_first
   }
   
   ### genotype (gt)
+  gt_first <- paste0("gt_", first_method_name)
+  gt_second <- paste0("gt_", second_method_name)
   gt <- input_table[,gt_first]
   het <- is.na(gt) | gt=="0/0"
   gt[het] <- input_table[,gt_second] [het]
@@ -1241,6 +1240,8 @@ method_homopolymer_indels <- function(input_table, gt_first, gt_second, vt_first
   gt_sd <- standardize_genotype(gt)
   
   ### variant type (vt)
+  vt_first <- paste0("variantType_", first_method_name)
+  vt_second <- paste0("variantType_", second_method_name)
   vt <- input_table[,vt_first]
   vt[het] <- input_table[,vt_second] [het]
   
@@ -1266,8 +1267,8 @@ method_homopolymer_indels <- function(input_table, gt_first, gt_second, vt_first
   names(ref_alt_alleles) <- c("ref_allele", "alt_allele")
   
   ### make a data frame and filter
-  k <- sub("^gt_", "", gt_second)
-  k <- paste0(k, "_classification")
+  k <- paste0( "in_",  c(first_method_name, second_method_name) )
+  k <- c( k, paste0(second_method_name, "_classification") )
   k <- c("chrm", "pos", "homopolymer_length_indel", "isoSeq_coverage", k)
   res <- cbind( input_table[,k], gt, gt_sd, vt, ref_alt_alleles )
   k <- (res$gt_sd %in% c("0/1", "1/1")) & (res$vt %in% c("insertion", "deletion"))

@@ -6,10 +6,8 @@
 \usage{
 method_homopolymer_indels(
   input_table,
-  gt_first,
-  gt_second,
-  vt_first,
-  vt_second,
+  first_method_name,
+  second_method_name,
   vcf_first,
   vcf_second,
   homopolymers,
@@ -21,17 +19,12 @@ method_homopolymer_indels(
 \arguments{
 \item{input_table}{A data.frame. The input master table.}
 
-\item{gt_first}{A 1-length string. The name of the column that stores the
-genotypes called by a method. This method is called the first method.}
+\item{first_method_name}{A 1-length string of the name of a method. First,
+the variant information that is taken is related to this method. If a
+variant is not called by the method, its information is taken relating
+to the method specifiec in `second_method_name`.}
 
-\item{gt_second}{A 1-length string. If the first method does not call some 
-variants, extract their genotype from column `gt_second`.}
-
-\item{vt_first}{A 1-length string. The name of the column that stores the
-variant type called by a method. This method is called the first method.}
-
-\item{vt_second}{A 1-length string. If the first method does not call some 
-variants, extract their variant type from column `vt_second`.}
+\item{second_method_name}{A 1-length string. The name of a method.}
 
 \item{vcf_first}{A 1-length string. The path of the VCF file of the first
 method.}
