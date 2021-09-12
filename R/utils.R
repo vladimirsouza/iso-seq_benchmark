@@ -1351,3 +1351,114 @@ method_homopolymer_indels <- function(input_table, first_method_name, second_met
 }
 
 
+
+
+
+
+
+
+
+
+
+#' Make plot to compare accuracy per homopolymer length
+#' 
+#' The function uses the output from function `method_homopolymer_indels`
+#'   to make a plot to compare how the accuracy vary in function of the
+#'   homopolymer length and if not homopolymer. Those accuracy measuares
+#'   can be either rates of TPs, FNs and FPs, or the precision, recall
+#'   and F1-score.
+#'
+#' @param input_hom_table A data.frame. The output of the function 
+#'   `method_homopolymer_indels`.
+#' @param variant_type A 1-length string. The variant type. Possivle
+#'   values are: "snp", "deletion", or "insertion".
+#' @param method_name A 1-length string. The name of the method to analyse.
+#' @param truth_name A 1-length string. The name of the ground-truth.
+#' @param hom_length_intervals A vector of integers. Must be the same
+#'   length of `interval_names`. The inferior limit for each interval for
+#'   homopolymer length.
+#' @param interval_names A vector of strings. Must be the same length of
+#'   `hom_length_intervals`. The name of each interval of homopolymer 
+#'   length.
+#' @param to_calculate A 1-length string. Possible values are: "rates" or
+#'   "pre_rec_f1".
+#'
+#' @return A list, in which the first element, named `p`, is a ggplot
+#'   object, and the second element, named `interval_counts`, is a named
+#'   vector of integers that stores the counts of variants in each 
+#'   interval specified by the x-axis of the plot in `p`.
+#' 
+#' @importFrom tibble rownames_to_column
+#' @importFrom dplyr rename
+#' @importFrom dplyr filter
+#' @importFrom dplyr mutate
+#' @importFrom dplyr group_by
+#' @importFrom dplyr left_join
+#' @importFrom dplyr summarise
+#' @importFrom tidyr gather
+#' @import ggplot2
+#' @importFrom rlang .data
+#' 
+#' @export
+make_homopolymer_plot <- function(input_hom_table, variant_type,
+                                  method_name, truth_name, hom_length_intervals,
+                                  interval_names, to_calculate){
+  
+  k <- to_calculate %in% c("rates", "pre_rec_f1")
+  if(!k){
+    stop("'to_calculate' argument must be either 'rates' or 'pre_rec_f1'.")
+  }
+  
+  input_hom_table <- input_hom_table[input_hom_table$vt==variant_type,]
+  
+  k <- findInterval(input_hom_table$homopolymer_length_indel,
+                    hom_length_intervals)
+  stopifnot( !any(k==0) )
+  k <- interval_names[k]
+  k <- factor(k, levels=interval_names, ordered=TRUE)
+  input_hom_table$homopolymer_length_intervals <- k
+  
+  method_class_name <- paste0(method_name, "_classification")
+  
+  if(to_calculate=="rates"){
+    k <- rename(input_hom_table, "Classification"=all_of(method_class_name))
+    k <- filter(k, .data$Classification %in% c("FN", "TP", "FP"))
+    k <- mutate(k, Classification=droplevels(.data$Classification))
+    k <- group_by(k, .data$homopolymer_length_intervals, .data$Classification)
+    class_counts <- summarise(k, count=n())
+    k <- group_by(class_counts, .data$homopolymer_length_intervals)
+    total_counts <- summarise(k, total_count=sum(.data$count))
+    k <- left_join(class_counts, total_counts)
+    class_counts <- mutate(k, percent=.data$count/.data$total_count)
+  }else{
+    input_hom_table_split <- split(input_hom_table,
+                                   input_hom_table$homopolymer_length_intervals)
+    k <- lapply(input_hom_table_split, function(x){
+      y <- calc_accuracy_measures(x, method_name, truth_name)
+      c(y, total_count=nrow(x))
+    })
+    k <- do.call(rbind, k)
+    k <- data.frame(k)
+    k <- rownames_to_column(k, "homopolymer_length_intervals")
+    k$homopolymer_length_intervals <- factor(k$homopolymer_length_intervals,
+                                             levels=interval_names, ordered=TRUE)
+    class_counts <- gather(k, "Classification", "percent", .data$precision:.data$f1Score,
+                           factor_key=TRUE)
+  }
+  
+  p <- ggplot(class_counts, aes(x=.data$homopolymer_length_intervals, y=.data$percent,
+                                group=.data$Classification, colour=.data$Classification)) +
+    geom_point() +
+    geom_line() +
+    xlab("Variant is in a homopolymer of length n") +
+    ylab("Proportion of each classification") +
+    # ggtitle("Classifications from SNCR+FC+DeepVariant") +
+    theme(text = element_text(size=18)) +
+    ylim(0,1)
+  
+  k <- split(class_counts$count, class_counts$homopolymer_length_intervals)
+  interval_counts <- sapply(k, sum)
+  
+  res <- list(p=p, interval_counts=interval_counts)
+  res
+}
