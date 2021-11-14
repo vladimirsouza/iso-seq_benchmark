@@ -2,5 +2,5 @@
 ^\.Rproj\.user$
 ^README\.Rmd$
 ^data/info\.txt$
-^scripts$
-^scripts_to_call_variants$
+^scripts_trash$
+^scripts_for_all_analyses_in_the_paper/$

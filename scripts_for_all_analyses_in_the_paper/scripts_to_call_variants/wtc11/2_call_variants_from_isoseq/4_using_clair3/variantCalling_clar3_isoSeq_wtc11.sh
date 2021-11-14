@@ -118,3 +118,51 @@ rm $OUTPUT_DIR/pileup_pass.vcf
 
 
 
+
+
+
+
+### SNPs from Clair3 (alone), indels from SNCR + FC+ Clair3
+OUTPUT_DIR="/home/vbarbo/project_2021/datasets/wtc11/methods_to_comp/clair3/mix"
+VCF_ALONE=/home/vbarbo/project_2021/datasets/wtc11/methods_to_comp/clair3/alone/pileup_pass.vcf.gz
+VCF_SNCR_FC=/home/vbarbo/project_2021/datasets/wtc11/methods_to_comp/clair3/sncr_fc/pileup_pass.vcf.gz
+
+
+mkdir $OUTPUT_DIR
+
+# snps
+vcftools --gzvcf $VCF_ALONE \
+  --out $OUTPUT_DIR/pileup_pass_snp \
+  --remove-indels --recode --recode-INFO-all
+bgzip $OUTPUT_DIR/pileup_pass_snp.recode.vcf
+tabix -p vcf $OUTPUT_DIR/pileup_pass_snp.recode.vcf.gz
+
+# indels
+vcftools --gzvcf $VCF_SNCR_FC \
+  --out $OUTPUT_DIR/pileup_pass_indel \
+  --keep-only-indels --recode --recode-INFO-all
+bgzip $OUTPUT_DIR/pileup_pass_indel.recode.vcf
+tabix -p vcf $OUTPUT_DIR/pileup_pass_indel.recode.vcf.gz
+
+# concatenate vcf files
+bcftools concat \
+  $OUTPUT_DIR/pileup_pass_snp.recode.vcf.gz \
+  $OUTPUT_DIR/pileup_pass_indel.recode.vcf.gz \
+  -o $OUTPUT_DIR/pileup_pass_mix.recode.vcf.gz \
+  -O z -D -a
+
+### to remove one of the (different) variants with same positions
+### >>> This is done in R
+library(vcfR)
+vcf <- read.vcfR("/home/vbarbo/project_2021/datasets/wtc11/methods_to_comp/clair3/mix/pileup_pass_mix.recode.vcf.gz")
+pos <- paste(vcf@fix[,1], vcf@fix[,2])
+k <- duplicated(pos)
+vcf_nodup <- vcf[!k]
+write.vcf(vcf_nodup, file="/home/vbarbo/project_2021/datasets/wtc11/methods_to_comp/clair3/mix/pileup_pass_mix_nodup.recode.vcf.gz")
+### <<< close R
+# for some reason, bcftools can't read vcf files produced by vcfR::write.vcf. 
+# decompressing and compressing it again can solve the problem!
+gunzip /home/vbarbo/project_2021/datasets/wtc11/methods_to_comp/clair3/mix/pileup_pass_mix_nodup.recode.vcf.gz
+bgzip /home/vbarbo/project_2021/datasets/wtc11/methods_to_comp/clair3/mix/pileup_pass_mix_nodup.recode.vcf
+
+
