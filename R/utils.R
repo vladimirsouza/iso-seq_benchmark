@@ -1363,8 +1363,8 @@ method_homopolymer_indels <- function(input_table, first_method_name, second_met
 #' Make plot to compare accuracy per homopolymer length
 #' 
 #' The function uses the output from function `method_homopolymer_indels`
-#'   to make a plot to compare how the accuracy vary in function of the
-#'   homopolymer length and if not homopolymer. Those accuracy measuares
+#'   to make a plot to compare how the accuracy vary according to the
+#'   homopolymer length or not within homopolymers. Those accuracy measures
 #'   can be either rates of TPs, FNs and FPs, or the precision, recall
 #'   and F1-score.
 #'
@@ -1419,10 +1419,11 @@ make_homopolymer_plot <- function(input_hom_table, variant_type,
   input_hom_table$homopolymer_length_intervals <- k
   
   method_class_name <- paste0(method_name, "_classification")
+  k <- input_hom_table[,method_class_name] %in% c("FN", "TP", "FP")
+  input_hom_table <- input_hom_table[k,]
   
   if(to_calculate=="rates"){
     k <- rename(input_hom_table, "Classification"=all_of(method_class_name))
-    k <- filter(k, .data$Classification %in% c("FN", "TP", "FP"))
     k <- mutate(k, Classification=droplevels(.data$Classification))
     k <- group_by(k, .data$homopolymer_length_intervals, .data$Classification)
     class_counts <- summarise(k, count=n())
@@ -1446,6 +1447,16 @@ make_homopolymer_plot <- function(input_hom_table, variant_type,
                            factor_key=TRUE)
   }
   
+  k <- split(class_counts$total_count, class_counts$homopolymer_length_intervals)
+  interval_counts <- sapply(k, unique)
+  stopifnot( is.atomic(interval_counts) )
+  dat_text <- data.frame(
+    label=paste0("n=", interval_counts),
+    x=names(interval_counts),
+    y=1.05*max(class_counts$percent),
+    Classification=NA
+  )
+  
   p <- ggplot(class_counts, aes(x=.data$homopolymer_length_intervals, y=.data$percent,
                                 group=.data$Classification, colour=.data$Classification)) +
     geom_point() +
@@ -1454,11 +1465,8 @@ make_homopolymer_plot <- function(input_hom_table, variant_type,
     ylab("Proportion of each classification") +
     # ggtitle("Classifications from SNCR+FC+DeepVariant") +
     theme(text = element_text(size=18)) +
-    ylim(0,1)
-  
-  k <- split(class_counts$count, class_counts$homopolymer_length_intervals)
-  interval_counts <- sapply(k, sum)
-  
-  res <- list(p=p, interval_counts=interval_counts)
-  res
+    # ylim(0,1) +
+    geom_text( data=dat_text, mapping= aes(x=x, y=y, label=label) ) +
+    NULL
+  p
 }

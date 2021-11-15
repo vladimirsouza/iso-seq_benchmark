@@ -44,8 +44,8 @@ A list, in which the first element, named `p`, is a ggplot
 }
 \description{
 The function uses the output from function `method_homopolymer_indels`
-  to make a plot to compare how the accuracy vary in function of the
-  homopolymer length and if not homopolymer. Those accuracy measuares
+  to make a plot to compare how the accuracy vary according to the
+  homopolymer length or not within homopolymers. Those accuracy measures
   can be either rates of TPs, FNs and FPs, or the precision, recall
   and F1-score.
 }
