@@ -1560,3 +1560,175 @@ make_homopolymer_table_to_plot <- function(input_hom_table, variant_type,
   res <- list(class_counts=class_counts, dat_text=dat_text)
   res
 }
+
+
+
+
+
+
+
+#' Generate data for splice-junction analysis using multiple master tables
+#' 
+#' Generate data to plot variant performance of sites near to and far from splice junctions
+#'   comparisons using multiple master table as facets.
+#'
+#' @param ... Master tables.
+#' @param experiment_names A vector of strings with length equal to the number of master
+#'   tables input in `...`. Names of the datasets for each data table.
+#' @param truth_names A vector of strings. Names of the ground truth in each data table
+#'   especified in `...`.
+#' @param method_names A vector of strings with length equal to the number of master
+#'   tables input in `...`. Names of the methods to compare.
+#' @param output_method_names A vector of strings with length equal to the number of master
+#'   tables input in `...`. Names of the methods to be in the output.
+#' @param variant_type A 1-length string. Possible values are "snp" or "indel".
+#' @param min_isoseq_coverage A 1-length integer. The threshod value for the minimum
+#'   Iso-Seq read coverage.
+#'
+#' @return A list of two elements (`acc_sj` and `n_test`) to be used to draw a chart to
+#'  analyse the variant-calling performance of sites near to and far from splice junctions.
+#'  `acc_sj` stores the calculated performance measures, and `n_test` stores the number of
+#'  observed variants in each case.
+#' 
+#' @importFrom dplyr filter
+#' @importFrom dplyr mutate
+#' @importFrom dplyr recode
+#' @importFrom rlang .data
+#' 
+#' @export
+splice_junction_analysis_table <- function(..., experiment_names, truth_names,
+                                           method_names, output_method_names, 
+                                           variant_type, min_isoseq_coverage) {
+  
+  data_tables <- c(...)
+  
+  if( !all(is.character(data_tables)) ){
+    stop("All objects in `...` must be strings that store file paths of master tables.")
+  }else{
+    if( !all(file.exists(data_tables)) ){
+      stop("There is at least one file in `...` that doesn't exist.")
+    }
+  }
+  
+  if( !(variant_type %in% c("snp", "indel")) ){
+    stop("`variant_type` argument must be either 'snp' or 'indel'.")
+  }else{
+    variant_type <- ifelse(variant_type=="snp", 0, 1)
+  }
+  
+  acc_n_experiments <- mapply(function(data_tables_i, experiment_names_i, truth_names_i){
+    ### load master table
+    invisible(
+      loaded_objects <- load(data_tables_i, verbose=TRUE)
+    )
+    if( !(length(loaded_objects)==1) | !is.data.frame(get(loaded_objects)) ){
+      stop( gettextf("file %s must contain a single master table.", data_tables_i) )
+    }
+    dat_ss <- get(loaded_objects)
+    
+    ### filter master table by iso-seq read coverage
+    dat_ss <- filter(dat_ss, .data$isoSeq_coverage >= .data$min_isoseq_coverage)
+    
+    ### take variants near and far from splice junctions
+    ### if near, many reads must contain the splice junction (at least 50% of them)
+    ### if far, no one read that contain a splice junction
+    ### if we do not consider n-cigar reads, percent_ss may be higher than 1.
+    ###   but this is ok, because we remove variants that overlap n-cigar reads
+    dat_ss <- mutate(dat_ss, "percent_ss" = .data$ss_highest_num / .data$isoSeq_coverage)
+    dat_ss <- filter(dat_ss, .data$percent_ss>=.5 | .data$is_near_ss==0)
+    
+    ### remove variants that overlap with any intronic region
+    dat_ss <- filter(dat_ss, .data$isoSeq_ncr_num==0)
+    
+    ### get the distance of the most frequent variant
+    dat_ss <- mutate(dat_ss, ss_dist_of_the_most_freq={
+      mapply(function(num, dis){
+        if( any(is.na(dis)) ){
+          stopifnot( length(dis)==1 )
+          NA
+        }else{
+          dis[ which.max(num) ]
+        }
+      }, .data$ss_num, .data$ss_dist)
+    })
+    
+    ### get the is_acceptor_site of the most frequent variant
+    dat_ss <- mutate(dat_ss, is_acceptor_site_of_the_most_freq={
+      mapply(function(num, acc){
+        if( any(is.na(acc)) ){
+          stopifnot( length(acc)==1 )
+          NA
+        }else{
+          acc[ which.max(num) ]
+        }
+      }, .data$ss_num, .data$is_acceptor_site)
+    })
+    
+    ### for each method to compare, calculate performance measures of
+    ### variant calling from sites near to and far from splice junctions
+    dat_ss_ori <- dat_ss
+    env <- environment()
+    env[["n_methods"]] <- NULL
+    acc_methods <- mapply(function(method_names_i, output_method_names_i){
+      k <- paste0("is_indel_", method_names_i)
+      k <- dat_ss_ori[,k] == variant_type
+      k <- which(k)
+      dat_ss <- dat_ss_ori[k,]
+      
+      env[["n_methods"]] <- c( env[["n_methods"]], paste0("n=", table(dat_ss$is_near_ss)) )
+      
+      k <- split(dat_ss, dat_ss$is_near_ss)
+      k <- sapply(k, calc_accuracy_measures, method_name=method_names_i, truth_name=truth_names_i)
+      k <- as.table(k)
+      acc <- as.data.frame(k)
+      names(acc) <- c("Measures", "is_near", "Score")
+      cbind(acc, Method=output_method_names_i)
+    }, method_names, output_method_names, SIMPLIFY=FALSE)
+    acc_methods <- do.call(rbind, acc_methods)
+    
+    acc_methods$is_near <- recode(acc_methods$is_near, "0"="No", "1"="Yes")
+    acc_methods$Measures <- recode(acc_methods$Measures, "precision"="Precision",
+                                          "sensitivity"="Recall", "f1Score"="F1-score")
+    acc_methods$Method <- factor(acc_methods$Method, levels=output_method_names, ordered=TRUE)
+    acc_methods$experiment <- experiment_names_i
+    
+    list(acc_methods=acc_methods, n_methods=n_methods)
+  }, data_tables, experiment_names, truth_names, SIMPLIFY=FALSE)
+  
+  ### table of performace measures
+  k <- lapply(acc_n_experiments, function(acc_n_experiments_i){
+    acc_n_experiments_i$acc_methods
+  })
+  k <- unname(k)
+  acc_sj <- do.call(rbind, k)
+  rownames(acc_sj) <- NULL
+  
+  ### table of text annotation. usefull to inclute text into future charts to create
+  k <- lapply(acc_n_experiments, function(acc_n_experiments_i){
+    acc_n_experiments_i$n_methods
+  })
+  k <- unname(k)
+  k <- do.call(c, k)
+  n_text <- data.frame(
+    label=k,
+    experiment=rep(
+      experiment_names,
+      rep(length(method_names)*2,
+          length(experiment_names))
+    ),
+    Method=gl(n=length(method_names),
+              k=2,
+              length=length(method_names)*2*length(experiment_names),
+              labels=output_method_names,
+              ordered=TRUE
+    ),
+    x=rep(
+      c("No", "Yes"),
+      length(method_names)*length(experiment_names)
+    ),
+    y=1.10*max(acc_sj$Score),
+    Measures=NA
+  )
+  
+  list(acc_sj=acc_sj, n_text=n_text)
+}
