@@ -1627,7 +1627,7 @@ splice_junction_analysis_table <- function(..., experiment_names, truth_names,
     dat_ss <- get(loaded_objects)
     
     ### filter master table by iso-seq read coverage
-    dat_ss <- filter(dat_ss, .data$isoSeq_coverage >= .data$min_isoseq_coverage)
+    dat_ss <- filter(dat_ss, .data$isoSeq_coverage >= min_isoseq_coverage)
     
     ### take variants near and far from splice junctions
     ### if near, many reads must contain the splice junction (at least 50% of them)
