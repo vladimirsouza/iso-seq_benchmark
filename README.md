@@ -3,7 +3,7 @@
 
 (This is a draft)
 
-# variantCallingFromIsoSeq
+# lrRNAseqBenchmark
 
 <!-- badges: start -->
 <!-- badges: end -->
@@ -15,7 +15,7 @@ data.
 ## Installation
 
 To install it use
-`devtools::install_github("vladimirsouza/variantCallingFromIsoSeq@main")`.
+`devtools::install_github("vladimirsouza/lrRNAseqBenchmark@main")`.
 
 ## An example on how to construct a master table
 
@@ -65,7 +65,7 @@ THREADS <- 40
 ### libraries
 
 ``` r
-library(variantCallingFromIsoSeq)
+library(lrRNAseqBenchmark)
 library(GenomicAlignments)
 library(dplyr)
 ```

@@ -18,7 +18,7 @@ knitr::opts_chunk$set(
 (This is a draft)
 
 
-# variantCallingFromIsoSeq
+# lrRNAseqBenchmark
 
 <!-- badges: start -->
 <!-- badges: end -->
@@ -28,7 +28,7 @@ Use ground-truth VCF files generated from short-read data to compare and validat
 
 ## Installation
 
-To install it use `devtools::install_github("vladimirsouza/variantCallingFromIsoSeq@main")`.
+To install it use `devtools::install_github("vladimirsouza/lrRNAseqBenchmark@main")`.
 
 
 
@@ -77,7 +77,7 @@ THREADS <- 40
 ### libraries
 
 ```{r}
-library(variantCallingFromIsoSeq)
+library(lrRNAseqBenchmark)
 library(GenomicAlignments)
 library(dplyr)
 ```
