@@ -765,3 +765,39 @@ add_homopolymer_length_when_indels <- function(input_table, homopolymers, ouput_
   
   input_table_hom
 }
+
+
+
+
+
+
+#' Add QUAL from a VCF into a master table
+#' 
+#' Add QUAL to master table.
+#'
+#' @param input_table A data.frame. The master table to add the new column.
+#' @param method_name A 1-lenght string. The name of the method from which is
+#'   desirable to get the QUAL values. The new column is named as 
+#'   "qual_<method_name>".
+#' @param vcf_file A 1-lenght string. The path of the VCF file from which the
+#'   the QUAL values are extracted.
+#' 
+#' @return A data.frame
+#' 
+#' @importFrom vcfR read.vcfR
+#' @importFrom dplyr left_join
+#' 
+#' @export
+add_qual_from_vcf <- function(input_table, method_name, vcf_file){
+  vcf <- read.vcfR(vcf_file)
+  qual <- vcf@fix[,colnames(vcf@fix) == "QUAL"]
+  qual <- as.numeric(qual)
+  qual <- data.frame(chrm=vcf@fix[,1],
+                     pos=as.integer(vcf@fix[,2]),
+                     qual)
+  names(qual)[3] <- paste0("qual_", method_name)
+  
+  left_join(input_table, qual)
+}
+
+
