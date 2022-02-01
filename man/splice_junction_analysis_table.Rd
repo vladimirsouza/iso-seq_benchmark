@@ -15,7 +15,7 @@ splice_junction_analysis_table(
 )
 }
 \arguments{
-\item{...}{Master tables.}
+\item{...}{1-length strings. Paths to master tables saved as RDS files.}
 
 \item{experiment_names}{A vector of strings with length equal to the number of master
 tables input in `...`. Names of the datasets for each data table.}

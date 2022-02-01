@@ -1572,7 +1572,7 @@ make_homopolymer_table_to_plot <- function(input_hom_table, variant_type,
 #' Generate data to plot variant performance of sites near to and far from splice junctions
 #'   comparisons using multiple master table as facets.
 #'
-#' @param ... Master tables.
+#' @param ... 1-length strings. Paths to master tables saved as RDS files.
 #' @param experiment_names A vector of strings with length equal to the number of master
 #'   tables input in `...`. Names of the datasets for each data table.
 #' @param truth_names A vector of strings. Names of the ground truth in each data table
@@ -1603,7 +1603,7 @@ splice_junction_analysis_table <- function(..., experiment_names, truth_names,
   data_tables <- c(...)
   
   if( !all(is.character(data_tables)) ){
-    stop("All objects in `...` must be strings that store file paths of master tables.")
+    stop("All objects in `...` must be strings that store file paths of master tables (RDS files).")
   }else{
     if( !all(file.exists(data_tables)) ){
       stop("There is at least one file in `...` that doesn't exist.")
@@ -1619,12 +1619,11 @@ splice_junction_analysis_table <- function(..., experiment_names, truth_names,
   acc_n_experiments <- mapply(function(data_tables_i, experiment_names_i, truth_names_i){
     ### load master table
     invisible(
-      loaded_objects <- load(data_tables_i, verbose=TRUE)
+      dat_ss <- readRDS(data_tables_i)
     )
-    if( !(length(loaded_objects)==1) | !is.data.frame(get(loaded_objects)) ){
-      stop( gettextf("file %s must contain a single master table.", data_tables_i) )
+    if( !is.data.frame(dat_ss) ){
+      stop( gettextf("file %s must contain a data.frame (master table).", data_tables_i) )
     }
-    dat_ss <- get(loaded_objects)
     
     ### filter master table by iso-seq read coverage
     dat_ss <- filter(dat_ss, .data$isoSeq_coverage >= min_isoseq_coverage)
