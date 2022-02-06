@@ -45,11 +45,11 @@ Generate a master table to compare and validate the variant calls from Iso-Seq d
 
 ### Files to download
 
-* [ORIGINAL_BAM](*******), BAM file with Iso-Seq reads aligned to the reference.
-* [SNCR+fC_BAM](******), BAM file after manipulations with `SplitNCigarReads` and `flagCorrection` in `ORIGINAL_BAM`.
-* [DeepVariant_VCF](********), VCF files with variants called from `ORIGINAL_BAM`.
-* [SNCR+fC+DeepVariant_VCF](********), VCF files with variants called from `SNCR+fC+DeepVariant_VCF`.
-* [Ground-truth_VCF](************), VCF files with ground-truth variants called from high-coverage short-read DNA data.
+* [ORIGINAL_BAM](https://zenodo.org/record/5979665/files/isoseq_chr21_22.bam), BAM file with Iso-Seq reads aligned to the reference.
+* [SNCR+fC_BAM](https://zenodo.org/record/5979665/files/isoseq_sncr_fc_chr21_22.bam), BAM file after manipulations with `SplitNCigarReads` and `flagCorrection` in `ORIGINAL_BAM`.
+* [DeepVariant_VCF](https://zenodo.org/record/5979665/files/deepvariant_chr21_22.vcf), VCF files with variants called from `ORIGINAL_BAM`.
+* [SNCR+fC+DeepVariant_VCF](https://zenodo.org/record/5979665/files/sncr_fc_deepvariant_chr21_22.vcf), VCF files with variants called from `SNCR+fC+DeepVariant_VCF`.
+* [Ground-truth_VCF](https://zenodo.org/record/5979665/files/ground_truth_chr21_22.vcf), VCF files with ground-truth variants called from high-coverage short-read DNA data.
 
 
 ### Input variables
@@ -81,7 +81,8 @@ TRUTH_BAM_FILE <- "/home/vbarbo/master_table_example/data/short_read_chr21_22.ba
 
 
 ### variables
-# the maximum distance (number of bases) of a variant from a splice junction to be consider near the splice junction
+# the maximum distance (number of bases) of a variant from a splice junction to be
+# consider near the splice junction
 MAX_DIST_FROM_SPLICE_SITE <- 20
 # number of threads to use
 THREADS <- 10
@@ -205,8 +206,6 @@ dat <- add_method_vs_truth_comparison_to_master_table(
 
 #### Add columns to inform the variant type according each method and the ground truth
 
-For the ground-truth
-
 ```{r}
 ### ground truth
 dat <- add_variant_type_to_master_table(dat, TRUTH_VCF_FILE, TRUTH_NAME)
@@ -296,7 +295,7 @@ Sites to keep:
 dat1 <- dat
 dim(dat1)
 
-shortread_cover_quantiles <- quantile(dat1$shortRead_chr21_22_coverage, probs=c(.05, .95))
+shortread_cover_quantiles <- quantile(dat1$shortRead_chr21_22_coverage, probs=.95)
 
 # variant/sequence_error density -- filter using the ground truth
 k <- dat1$variantDensity_truth <= 3
@@ -307,10 +306,9 @@ dim(dat1)
 dat1 <- filter(dat1, isoSeq_chr21_22_coverage>0)
 dim(dat1)
 
-# ignore regions based on short-read coverage quantiles: keep 5% <= x <= 95%
-k <- paste0(TRUTH_DATASET_NAME, "_coverage")
-dat1 <- filter(dat1, shortRead_chr21_22_coverage >= shortread_cover_quantiles[1] &
-                 shortRead_chr21_22_coverage <= shortread_cover_quantiles[2])
+# ignore regions based on short-read coverage quantiles: keep 20 reads <= x <= 95% percentile
+dat1 <- filter(dat1, shortRead_chr21_22_coverage >= 20 &
+                 shortRead_chr21_22_coverage <= shortread_cover_quantiles)
 dim(dat1)
 
 # Filter out DeepVariant calls by QUAL -- but keep the position
@@ -335,5 +333,55 @@ dat1 <- add_method_vs_truth_comparison_to_master_table(
 ```
 
 
+
+
+
+
+
 ## From the master table, make plots for visual analyses
+
+In this section we use functions available in package `lrRNAseqBenchmark` to validate the used methods/pipelines.
+
+
+### Use precision-recall curves to compare the performance of the methods
+
+Calculate precison measures to according different minimum Iso-Seq read coverage threshold.
+
+```{r, fig.height=3}
+library(ggplot2)
+
+
+# define different minimum coverage threshold
+min_coverage <- c(3, 15, 40, 100)
+
+output_method_names <- c("DeepVariant", "SNCR+fC+DeepVariant")
+experiment_names <- "Experiment 1"
+
+### calculate precision
+dat_plot <- calculate_precision_recall_for_multi_master_tables(
+  dat1,
+  experiment_names = experiment_names,
+  method_names = METHOD_NAMES,
+  output_method_names = output_method_names,
+  data_names = METHOD_DATASET_NAME,
+  truth_names = TRUTH_NAME,
+  coverage_thresholds = min_coverage,
+  what = "snps_indels"
+)
+
+### plot the results
+ggplot(dat_plot, aes(recall, precision, colour=method)) +
+  facet_grid(experiment~variant) +
+  geom_point(aes(size=`coverage >= n`), alpha=.5) +
+  geom_path(size=1.2, alpha=.5) +
+  theme(legend.position="bottom", legend.box="vertical") +
+  coord_fixed(ratio=1, xlim=c(0.24, 0.98), ylim=c(0.69, 0.96)) +
+  xlab("Recall") +
+  ylab("Precision") +
+  labs(colour="Method", size="Minimum Iso-Seq read coverage") +
+  scale_x_continuous(breaks=seq(.2, 1, .1), labels=seq(.2, 1, .1)) +
+  guides(colour = guide_legend(order=1)) +
+  NULL
+```
+
 
