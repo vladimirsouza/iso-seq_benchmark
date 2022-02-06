@@ -370,6 +370,12 @@ calculate_precision_recall_for_multi_master_tables <- function(
     
     stopifnot( is.vector(what) & !is.list(what) )
     stopifnot( length(what)==1 )
+    
+    method_names <- list(method_names)
+    output_method_names <- list(output_method_names)
+    coverage_thresholds <- list(coverage_thresholds)
+    
+    mt_len <- 1
   }else{
     mt_len <- length(master_tables)
     
