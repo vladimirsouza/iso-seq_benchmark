@@ -1578,7 +1578,7 @@ make_homopolymer_table_to_plot <- function(input_hom_table, variant_type,
 #' Generate data to plot variant performance of sites near to and far from splice junctions
 #'   comparisons using multiple master table as facets.
 #'
-#' @param ... 1-length strings. Paths to master tables saved as RDS files.
+#' @param ... Data.frames. Each data.frame is a master table.
 #' @param experiment_names A vector of strings with length equal to the number of master
 #'   tables input in `...`. Names of the datasets for each data table.
 #' @param truth_names A vector of strings. Names of the ground truth in each data table
@@ -1606,14 +1606,10 @@ splice_junction_analysis_table <- function(..., experiment_names, truth_names,
                                            method_names, output_method_names, 
                                            variant_type, min_isoseq_coverage) {
   
-  data_tables <- c(...)
+  data_tables <- list(...)
   
-  if( !all(is.character(data_tables)) ){
-    stop("All objects in `...` must be strings that store file paths of master tables (RDS files).")
-  }else{
-    if( !all(file.exists(data_tables)) ){
-      stop("There is at least one file in `...` that doesn't exist.")
-    }
+  if( !all( sapply(data_tables, class) == "data.frame" ) ){
+    stop("All objects in `...` must be data.frames. Make sure it's a master table.")
   }
   
   if( !(variant_type %in% c("snp", "indel")) ){
@@ -1623,30 +1619,22 @@ splice_junction_analysis_table <- function(..., experiment_names, truth_names,
   }
   
   acc_n_experiments <- mapply(function(data_tables_i, experiment_names_i, truth_names_i){
-    ### load master table
-    invisible(
-      dat_ss <- readRDS(data_tables_i)
-    )
-    if( !is.data.frame(dat_ss) ){
-      stop( gettextf("file %s must contain a data.frame (master table).", data_tables_i) )
-    }
-    
     ### filter master table by iso-seq read coverage
-    dat_ss <- filter(dat_ss, .data$isoSeq_coverage >= min_isoseq_coverage)
+    data_tables_i <- filter(data_tables_i, .data$isoSeq_coverage >= min_isoseq_coverage)
     
     ### take variants near and far from splice junctions
     ### if near, many reads must contain the splice junction (at least 50% of them)
     ### if far, no one read that contain a splice junction
     ### if we do not consider n-cigar reads, percent_ss may be higher than 1.
     ###   but this is ok, because we remove variants that overlap n-cigar reads
-    dat_ss <- mutate(dat_ss, "percent_ss" = .data$ss_highest_num / .data$isoSeq_coverage)
-    dat_ss <- filter(dat_ss, .data$percent_ss>=.5 | .data$is_near_ss==0)
+    data_tables_i <- mutate(data_tables_i, "percent_ss" = .data$ss_highest_num / .data$isoSeq_coverage)
+    data_tables_i <- filter(data_tables_i, .data$percent_ss>=.5 | .data$is_near_ss==0)
     
     ### remove variants that overlap with any intronic region
-    dat_ss <- filter(dat_ss, .data$isoSeq_ncr_num==0)
+    data_tables_i <- filter(data_tables_i, .data$isoSeq_ncr_num==0)
     
     ### get the distance of the most frequent variant
-    dat_ss <- mutate(dat_ss, ss_dist_of_the_most_freq={
+    data_tables_i <- mutate(data_tables_i, ss_dist_of_the_most_freq={
       mapply(function(num, dis){
         if( any(is.na(dis)) ){
           stopifnot( length(dis)==1 )
@@ -1658,7 +1646,7 @@ splice_junction_analysis_table <- function(..., experiment_names, truth_names,
     })
     
     ### get the is_acceptor_site of the most frequent variant
-    dat_ss <- mutate(dat_ss, is_acceptor_site_of_the_most_freq={
+    data_tables_i <- mutate(data_tables_i, is_acceptor_site_of_the_most_freq={
       mapply(function(num, acc){
         if( any(is.na(acc)) ){
           stopifnot( length(acc)==1 )
@@ -1671,18 +1659,18 @@ splice_junction_analysis_table <- function(..., experiment_names, truth_names,
     
     ### for each method to compare, calculate performance measures of
     ### variant calling from sites near to and far from splice junctions
-    dat_ss_ori <- dat_ss
+    data_tables_i_ori <- data_tables_i
     env <- environment()
     env[["n_methods"]] <- NULL
     acc_methods <- mapply(function(method_names_i, output_method_names_i){
       k <- paste0("is_indel_", method_names_i)
-      k <- dat_ss_ori[,k] == variant_type
+      k <- data_tables_i_ori[,k] == variant_type
       k <- which(k)
-      dat_ss <- dat_ss_ori[k,]
+      data_tables_i <- data_tables_i_ori[k,]
       
-      env[["n_methods"]] <- c( env[["n_methods"]], paste0("n=", table(dat_ss$is_near_ss)) )
+      env[["n_methods"]] <- c( env[["n_methods"]], paste0("n=", table(data_tables_i$is_near_ss)) )
       
-      k <- split(dat_ss, dat_ss$is_near_ss)
+      k <- split(data_tables_i, data_tables_i$is_near_ss)
       k <- sapply(k, calc_accuracy_measures, method_name=method_names_i, truth_name=truth_names_i)
       k <- as.table(k)
       acc <- as.data.frame(k)
