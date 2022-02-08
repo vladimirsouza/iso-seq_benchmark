@@ -1583,10 +1583,13 @@ make_homopolymer_table_to_plot <- function(input_hom_table, variant_type,
 #'   tables input in `...`. Names of the datasets for each data table.
 #' @param truth_names A vector of strings. Names of the ground truth in each data table
 #'   especified in `...`.
-#' @param method_names A vector of strings with length equal to the number of master
-#'   tables input in `...`. Names of the methods to compare.
-#' @param output_method_names A vector of strings with length equal to the number of master
-#'   tables input in `...`. Names of the methods to be in the output.
+#' @param method_dataset_name A vector of strings. Name of the datasets used to call
+#'   variants, by the methods to be compared, in each input master table.
+#' @param method_names A vector of strings. The name of the methods to be compared defined in
+#'   the input master tables. All master table must have the same `method_names`.
+#' @param output_method_names A vector of strings. The output name of the methods to be
+#'   compared defined in the input master tables. The output name of the methods will be
+#'   the same for all master table.
 #' @param variant_type A 1-length string. Possible values are "snp" or "indel".
 #' @param min_isoseq_coverage A 1-length integer. The threshod value for the minimum
 #'   Iso-Seq read coverage.
@@ -1602,9 +1605,9 @@ make_homopolymer_table_to_plot <- function(input_hom_table, variant_type,
 #' @importFrom rlang .data
 #' 
 #' @export
-splice_junction_analysis_table <- function(..., experiment_names, truth_names,
-                                           method_names, output_method_names, 
-                                           variant_type, min_isoseq_coverage) {
+splice_junction_analysis_table <- function(..., experiment_names, truth_names, method_dataset_name,
+                                           method_names, output_method_names, variant_type,
+                                           min_isoseq_coverage) {
   
   data_tables <- list(...)
   
@@ -1618,20 +1621,25 @@ splice_junction_analysis_table <- function(..., experiment_names, truth_names,
     variant_type <- ifelse(variant_type=="snp", 0, 1)
   }
   
-  acc_n_experiments <- mapply(function(data_tables_i, experiment_names_i, truth_names_i){
+  acc_n_experiments <- mapply(function(data_tables_i, experiment_names_i, truth_names_i, method_dataset_name_i){
     ### filter master table by iso-seq read coverage
-    data_tables_i <- filter(data_tables_i, .data$isoSeq_coverage >= min_isoseq_coverage)
+    dataset_coverage_column <- paste0(method_dataset_name_i, "_coverage")
+    k <- data_tables_i[,dataset_coverage_column] >= min_isoseq_coverage
+    data_tables_i <- data_tables_i[k,]
     
     ### take variants near and far from splice junctions
     ### if near, many reads must contain the splice junction (at least 50% of them)
     ### if far, no one read that contain a splice junction
     ### if we do not consider n-cigar reads, percent_ss may be higher than 1.
     ###   but this is ok, because we remove variants that overlap n-cigar reads
-    data_tables_i <- mutate(data_tables_i, "percent_ss" = .data$ss_highest_num / .data$isoSeq_coverage)
+    k <- data_tables_i$ss_highest_num / data_tables_i[,dataset_coverage_column]
+    data_tables_i <- mutate(data_tables_i, "percent_ss" = k)
     data_tables_i <- filter(data_tables_i, .data$percent_ss>=.5 | .data$is_near_ss==0)
     
     ### remove variants that overlap with any intronic region
-    data_tables_i <- filter(data_tables_i, .data$isoSeq_ncr_num==0)
+    dataset_ncrNum_column <- paste0(method_dataset_name_i, "_ncr_num")
+    k <- data_tables_i[,dataset_ncrNum_column] == 0
+    data_tables_i <- data_tables_i[k,]
     
     ### get the distance of the most frequent variant
     data_tables_i <- mutate(data_tables_i, ss_dist_of_the_most_freq={
@@ -1686,7 +1694,7 @@ splice_junction_analysis_table <- function(..., experiment_names, truth_names,
     acc_methods$experiment <- experiment_names_i
     
     list(acc_methods=acc_methods, n_methods=n_methods)
-  }, data_tables, experiment_names, truth_names, SIMPLIFY=FALSE)
+  }, data_tables, experiment_names, truth_names, method_dataset_name, SIMPLIFY=FALSE)
   
   ### table of performace measures
   k <- lapply(acc_n_experiments, function(acc_n_experiments_i){

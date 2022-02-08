@@ -8,6 +8,7 @@ splice_junction_analysis_table(
   ...,
   experiment_names,
   truth_names,
+  method_dataset_name,
   method_names,
   output_method_names,
   variant_type,
@@ -15,7 +16,7 @@ splice_junction_analysis_table(
 )
 }
 \arguments{
-\item{...}{1-length strings. Paths to master tables saved as RDS files.}
+\item{...}{Data.frames. Each data.frame is a master table.}
 
 \item{experiment_names}{A vector of strings with length equal to the number of master
 tables input in `...`. Names of the datasets for each data table.}
@@ -23,11 +24,15 @@ tables input in `...`. Names of the datasets for each data table.}
 \item{truth_names}{A vector of strings. Names of the ground truth in each data table
 especified in `...`.}
 
-\item{method_names}{A vector of strings with length equal to the number of master
-tables input in `...`. Names of the methods to compare.}
+\item{method_dataset_name}{A vector of strings. Name of the datasets used to call
+variants, by the methods to be compared, in each input master table.}
 
-\item{output_method_names}{A vector of strings with length equal to the number of master
-tables input in `...`. Names of the methods to be in the output.}
+\item{method_names}{A vector of strings. The name of the methods to be compared defined in
+the input master tables. All master table must have the same `method_names`.}
+
+\item{output_method_names}{A vector of strings. The output name of the methods to be
+compared defined in the input master tables. The output name of the methods will be
+the same for all master table.}
 
 \item{variant_type}{A 1-length string. Possible values are "snp" or "indel".}
 
