@@ -24,7 +24,9 @@ knitr::opts_chunk$set(
 
 `lrRNAseqBenchmark` is as `R` package that facilitates the validation of genetic variants called from long-read RNA-seq (lrRNA-seq) data by one or more variant callers, by comparing their VCF files with a ground-truth VCF file (commonly generated from high-coverage short-read data).
 
-`lrRNAseqBenchmark` constructs a big data.frame (master table) that contains information about the variants called by the methods to be validated and the variants in the ground truth. From this master table, many plots can be made by different functions available in the package, which allow the visial analyses including variant proximity to splice junctions, variants in homopolymers, and variants from allele specific expressed (ASE) genes.
+`lrRNAseqBenchmark` constructs a big data.frame (master table) that contains information about the variants called by the methods to be validated and the variants in the ground truth. From this master table, many plots can be made by different functions available in the package (`ggplot2`-base packages used internally), which allow the visial analyses including variant proximity to splice junctions, variants in homopolymers, and variants from allele specific expressed (ASE) genes.
+
+
 
 
 ## Installation
@@ -34,6 +36,16 @@ To install this package just type in your `R`
 ```
 devtools::install_github("vladimirsouza/lrRNAseqBenchmark@main")
 ```
+
+
+
+
+## Reference manual
+
+For a full list and description of all functions available in this package, click [here](https://github.com/vladimirsouza/lrRNAseqBenchmark/blob/main/documents/lrRNAseqBenchmark.pdf).
+
+
+
 
 ## An example on how to construct a master table
 
@@ -282,6 +294,7 @@ head(dat)
 
 
 
+
 ## Filtering master table
 
 Sites to keep:  
@@ -336,8 +349,6 @@ dat1 <- add_method_vs_truth_comparison_to_master_table(
 
 
 
-
-
 ## From the master table, make plots for visual analyses
 
 In this section we use functions available in package `lrRNAseqBenchmark` to validate the used methods/pipelines.
@@ -345,7 +356,7 @@ In this section we use functions available in package `lrRNAseqBenchmark` to val
 
 ### Use precision-recall curves to compare the performance of the methods
 
-Calculate precison measures to according different minimum Iso-Seq read coverage threshold.
+Calculate precison measures according to different minimum Iso-Seq read coverage threshold.
 
 ```{r, fig.height=3}
 library(ggplot2)
@@ -381,6 +392,38 @@ ggplot(dat_plot, aes(recall, precision, colour=method)) +
   labs(colour="Method", size="Minimum Iso-Seq read coverage") +
   scale_x_continuous(breaks=seq(.2, 1, .1), labels=seq(.2, 1, .1)) +
   guides(colour = guide_legend(order=1)) +
+  NULL
+```
+
+
+### Compare the performance of the methods when near to or far from splice junctions
+
+Here, we consider a variant near to a splice junction when it's not further than 20 bases.
+
+```{r}
+variant_type <- "snp"
+min_coverage <- 20
+
+sj_proximity_snps <- splice_junction_analysis_table(dat1,
+                                                    experiment_names = experiment_names,
+                                                    truth_names = TRUTH_NAME,
+                                                    method_dataset_name = METHOD_DATASET_NAME,
+                                                    method_names = METHOD_NAMES,
+                                                    output_method_names = output_method_names,
+                                                    variant_type = variant_type,
+                                                    min_isoseq_coverage = min_coverage)
+
+ggplot( sj_proximity_snps$acc_sj, aes(x=is_near, y=Score, group=Measures, colour=Measures) ) +
+  facet_grid(experiment~Method) +
+  theme(strip.text = element_text(size = 14)) +
+  geom_point(size=4, alpha=.5) +
+  geom_line(size=1.2, alpha=.5) +
+  xlab("SNP candidates are near a splice junction") +
+  theme(text = element_text(size=18)) +
+  geom_text( data=sj_proximity_snps$n_text, mapping= aes(x=x, y=y, label=label), size=5 ) +
+  scale_y_continuous(breaks=seq(0, 1, .25)) +
+  guides(colour = guide_legend(override.aes = list(size = 1, shape = 11))) +
+  theme(legend.position="bottom") +
   NULL
 ```
 

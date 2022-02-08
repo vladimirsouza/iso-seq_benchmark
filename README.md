@@ -14,16 +14,22 @@ data).
 `lrRNAseqBenchmark` constructs a big data.frame (master table) that
 contains information about the variants called by the methods to be
 validated and the variants in the ground truth. From this master table,
-many plots can be made by different functions available in the package,
-which allow the visial analyses including variant proximity to splice
-junctions, variants in homopolymers, and variants from allele specific
-expressed (ASE) genes.
+many plots can be made by different functions available in the package
+(`ggplot2`-base packages used internally), which allow the visial
+analyses including variant proximity to splice junctions, variants in
+homopolymers, and variants from allele specific expressed (ASE) genes.
 
 ## Installation
 
 To install this package just type in your `R`
 
     devtools::install_github("vladimirsouza/lrRNAseqBenchmark@main")
+
+## Reference manual
+
+For a full list and description of all functions available in this
+package, click
+[here](https://github.com/vladimirsouza/lrRNAseqBenchmark/blob/main/documents/lrRNAseqBenchmark.pdf).
 
 ## An example on how to construct a master table
 
@@ -330,7 +336,7 @@ In this section we use functions available in package
 
 ### Use precision-recall curves to compare the performance of the methods
 
-Calculate precison measures to according different minimum Iso-Seq read
+Calculate precison measures according to different minimum Iso-Seq read
 coverage threshold.
 
 ``` r
@@ -371,3 +377,37 @@ ggplot(dat_plot, aes(recall, precision, colour=method)) +
 ```
 
 <img src="man/figures/README-unnamed-chunk-19-1.png" width="100%" />
+
+### Compare the performance of the methods when near to or far from splice junctions
+
+Here, we consider a variant near to a splice junction when it’s not
+further than 20 bases.
+
+``` r
+variant_type <- "snp"
+min_coverage <- 20
+
+sj_proximity_snps <- splice_junction_analysis_table(dat1,
+                                                    experiment_names = experiment_names,
+                                                    truth_names = TRUTH_NAME,
+                                                    method_dataset_name = METHOD_DATASET_NAME,
+                                                    method_names = METHOD_NAMES,
+                                                    output_method_names = output_method_names,
+                                                    variant_type = variant_type,
+                                                    min_isoseq_coverage = min_coverage)
+
+ggplot( sj_proximity_snps$acc_sj, aes(x=is_near, y=Score, group=Measures, colour=Measures) ) +
+  facet_grid(experiment~Method) +
+  theme(strip.text = element_text(size = 14)) +
+  geom_point(size=4, alpha=.5) +
+  geom_line(size=1.2, alpha=.5) +
+  xlab("SNP candidates are near a splice junction") +
+  theme(text = element_text(size=18)) +
+  geom_text( data=sj_proximity_snps$n_text, mapping= aes(x=x, y=y, label=label), size=5 ) +
+  scale_y_continuous(breaks=seq(0, 1, .25)) +
+  guides(colour = guide_legend(override.aes = list(size = 1, shape = 11))) +
+  theme(legend.position="bottom") +
+  NULL
+```
+
+<img src="man/figures/README-unnamed-chunk-20-1.png" width="100%" />
