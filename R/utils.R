@@ -1550,7 +1550,7 @@ make_homopolymer_table_to_plot <- function(input_hom_table, variant_type,
   k <- rownames_to_column(k, "homopolymer_length_intervals")
   k$homopolymer_length_intervals <- factor(k$homopolymer_length_intervals,
                                            levels=interval_names, ordered=TRUE)
-  class_counts <- gather(k, "Classification", "percent",
+  class_counts <- gather(k, "Measures", "percent",
                          .data$precision:.data$f1Score, factor_key=TRUE)
   
   k <- split(class_counts$total_count, class_counts$homopolymer_length_intervals)
@@ -1560,7 +1560,7 @@ make_homopolymer_table_to_plot <- function(input_hom_table, variant_type,
     label=paste0("n=", interval_counts),
     x=names(interval_counts),
     y=1.05*max(class_counts$percent),
-    Classification=NA
+    Measures=NA
   )
   
   class_counts$method <- dat_text$method <- output_method_name
