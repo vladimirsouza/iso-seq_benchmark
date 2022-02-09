@@ -1190,6 +1190,8 @@ gt_vt_method <- function(input_table, gt_first, gt_second, vt_first, vt_second){
 #'   method.
 #' @param vcf_second A 1-length string. The path of the VCF file of the
 #'   second method.
+#' @param method_dataset_name A 1-length string. Name of the dataset used to
+#'   call variants by the methods to be compared.
 #' @param homopolymers A CompressedIRangesList object. It should store all 
 #'   homopolymers, it's nucleotive types and lengths, of the genome used as
 #'   the reference to call the variants. It is gerated by the function
@@ -1215,8 +1217,8 @@ gt_vt_method <- function(input_table, gt_first, gt_second, vt_first, vt_second){
 #' 
 #' @export
 method_homopolymer_indels <- function(input_table, first_method_name, second_method_name,
-                                      vcf_first, vcf_second, homopolymers, ref_fasta_seqs,
-                                      min_isoseq_coverage, genotyped_alt){
+                                      vcf_first, vcf_second, method_dataset_name, homopolymers,
+                                      ref_fasta_seqs, min_isoseq_coverage, genotyped_alt){
   
   stopifnot( genotyped_alt %in% c("find", "same") )
   k <- grep("dv|c3|clair3", second_method_name, ignore.case=TRUE)
@@ -1275,17 +1277,18 @@ method_homopolymer_indels <- function(input_table, first_method_name, second_met
   ### make a data frame and filter
   k <- paste0( "in_",  c(first_method_name, second_method_name) )
   k <- c( k, paste0(second_method_name, "_classification") )
-  k <- c("chrm", "pos", "homopolymer_length_indel", "isoSeq_coverage", k)
+  coverage_dataset_column <- paste0(method_dataset_name, "_coverage")
+  k <- c("chrm", "pos", "homopolymer_length_indel", coverage_dataset_column, k)
   res <- cbind( input_table[,k], gt, gt_sd, vt, ref_alt_alleles )
   k <- (res$gt_sd %in% c("0/1", "1/1")) & (res$vt %in% c("insertion", "deletion"))
   res <- res[k,]
   
   ### filter by iso-seq coverage
-  res <- res[res$isoSeq_coverage >= min_isoseq_coverage,]
+  res <- res[ res[,coverage_dataset_column] >= min_isoseq_coverage, ]
   
   ### genotyped aternative allele
   if(genotyped_alt=="find"){
-    k <- sub("^[0-9]+/", "", res$gt)
+    k <- sub("^[0-9]+/", "", res$gt_sd)
     k <- as.integer(k)
     alt_split <- strsplit(res$alt_allele, ",")
     alt_genotyped <- mapply( function(a, ki){

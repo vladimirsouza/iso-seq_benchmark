@@ -10,6 +10,7 @@ method_homopolymer_indels(
   second_method_name,
   vcf_first,
   vcf_second,
+  method_dataset_name,
   homopolymers,
   ref_fasta_seqs,
   min_isoseq_coverage,
@@ -31,6 +32,9 @@ method.}
 
 \item{vcf_second}{A 1-length string. The path of the VCF file of the
 second method.}
+
+\item{method_dataset_name}{A 1-length string. Name of the dataset used to
+call variants by the methods to be compared.}
 
 \item{homopolymers}{A CompressedIRangesList object. It should store all 
 homopolymers, it's nucleotive types and lengths, of the genome used as
