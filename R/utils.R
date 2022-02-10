@@ -1214,6 +1214,7 @@ gt_vt_method <- function(input_table, gt_first, gt_second, vt_first, vt_second){
 #' @importFrom Biostrings readDNAStringSet
 #' @importFrom IRanges IRanges
 #' @importFrom XVector subseq compact
+#' @importFrom dplyr rename
 #' 
 #' @export
 method_homopolymer_indels <- function(input_table, first_method_name, second_method_name,
