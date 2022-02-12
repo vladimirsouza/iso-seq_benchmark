@@ -101,16 +101,18 @@ THREADS <- 10
 GENOME_REF_FILE <- "/home/vbarbo/master_table_example/data/chr21_22.fa"
 ```
 
-### Create the master table
-
-#### Load libraries
+### Load libraries
 
 ``` r
 library(lrRNAseqBenchmark)
 library(GenomicAlignments)
 library(dplyr)
 library(sarlacc)
+library(snakecase)
+library(ggplot2)
 ```
+
+### Create the master table
 
 #### Initiate the master table
 
@@ -265,8 +267,8 @@ dat[,sel_cols] [k] <- "0/0"
 ``` r
 # get all homopolymers of the reference genome
 genome_ref <- readDNAStringSet(GENOME_REF_FILE)
+names(genome_ref) <- sub("(^chr[0-9]+|X|Y).*", "\\1", names(genome_ref))
 homopolymers <- homopolymerFinder(genome_ref)
-names(homopolymers) <- sub("(^chr[0-9]+|X|Y).*", "\\1", names(homopolymers))
 
 dat <- add_homopolymer_length_when_indels(dat, homopolymers)
 ```
@@ -294,7 +296,8 @@ dim(dat1)
 
 shortread_cover_quantiles <- quantile(dat1$shortRead_chr21_22_coverage, probs=.95)
 
-# variant/sequence_error density -- filter using the ground truth
+# if a region contains high variant density, probably this is because of a bad alignmnet.
+# we filter out variants in 201bp regions with more than 3 variants in the ground truth
 k <- dat1$variantDensity_truth <= 3
 dat1 <- dat1[k,]
 dim(dat1)
@@ -411,3 +414,125 @@ ggplot( sj_proximity_snps$acc_sj, aes(x=is_near, y=Score, group=Measures, colour
 ```
 
 <img src="man/figures/README-unnamed-chunk-20-1.png" width="100%" />
+
+### compare the performance of the methods to call indels within or outside homopolymer repeats
+
+``` r
+### for higher variant quality, we also filter out variants in high-variant-density regions according the calls of the methods to be compared.
+dat2 <- filter(dat1, variantDensity_dv_sncrFcDv <= 3)
+dim(dat2)
+
+### and filter out variants near splice junctions
+dat2 <- filter(dat2, is_near_ss==0)
+dim(dat2)
+
+
+### for each pipeline, make a table that stores indels and the homopolymer length where they are inside.
+### if a indel is outside homopolymers, the returned homopolymer length is equal to 1.
+### keep only variants that are:
+### * in Iso-Seq coverage >= 20 reads;
+### * classified as heterozygous alternative;
+### * indels.
+
+# indels called by DeepVaraint (alone)
+dat_hom_dv <- method_homopolymer_indels(input_table = dat2,
+                                        first_method_name = TRUTH_NAME,
+                                        second_method_name = METHOD_NAMES[1],
+                                        vcf_first = TRUTH_VCF_FILE,
+                                        vcf_second = METHOD_VCF_FILES[1],
+                                        method_dataset_name = METHOD_DATASET_NAME,
+                                        homopolymers = homopolymers,
+                                        ref_fasta_seqs = genome_ref,
+                                        min_isoseq_coverage = 20,
+                                        genotyped_alt = "find")
+
+# indels called by SNCR+fC+DeepVaraint
+dat_hom_sncrFcDv <- method_homopolymer_indels(input_table = dat2,
+                                              first_method_name = TRUTH_NAME,
+                                              second_method_name = METHOD_NAMES[2],
+                                              vcf_first = TRUTH_VCF_FILE,
+                                              vcf_second = METHOD_VCF_FILES[2],
+                                              method_dataset_name = METHOD_DATASET_NAME,
+                                              homopolymers = homopolymers,
+                                              ref_fasta_seqs = genome_ref,
+                                              min_isoseq_coverage = 20,
+                                              genotyped_alt = "find")
+
+
+### get the data to make the plot
+hom_length_intervals <- c(1, 2, 8)
+interval_names <- c("non-hp", "2-5", ">=8")
+dat_homopolymer <-list(class_counts=NULL, dat_text=NULL)
+
+# DeepVaraint (alone), deletions
+k <- make_homopolymer_table_to_plot(
+  input_hom_table = dat_hom_dv,
+  variant_type = "deletion",
+  method_name = METHOD_NAMES[1],
+  truth_name = TRUTH_NAME,
+  hom_length_intervals = hom_length_intervals,
+  interval_names = interval_names,
+  to_calculate = "pre_rec_f1",
+  output_method_name = output_method_names[1]
+)
+dat_homopolymer <- mapply(rbind, dat_homopolymer, k, SIMPLIFY=FALSE)
+
+# DeepVaraint (alone), insertions
+k <- make_homopolymer_table_to_plot(
+  input_hom_table = dat_hom_dv,
+  variant_type = "insertion",
+  method_name = METHOD_NAMES[1],
+  truth_name = TRUTH_NAME,
+  hom_length_intervals = hom_length_intervals,
+  interval_names = interval_names,
+  to_calculate = "pre_rec_f1",
+  output_method_name = output_method_names[1]
+)
+dat_homopolymer <- mapply(rbind, dat_homopolymer, k, SIMPLIFY=FALSE)
+
+# DeepVaraint (alone), deletions
+k <- make_homopolymer_table_to_plot(
+  input_hom_table = dat_hom_sncrFcDv,
+  variant_type = "deletion",
+  method_name = METHOD_NAMES[2],
+  truth_name = TRUTH_NAME,
+  hom_length_intervals = hom_length_intervals,
+  interval_names = interval_names,
+  to_calculate = "pre_rec_f1",
+  output_method_name = output_method_names[2]
+)
+dat_homopolymer <- mapply(rbind, dat_homopolymer, k, SIMPLIFY=FALSE)
+
+# DeepVaraint (alone), insertions
+k <- make_homopolymer_table_to_plot(
+  input_hom_table = dat_hom_sncrFcDv,
+  variant_type = "insertion",
+  method_name = METHOD_NAMES[2],
+  truth_name = TRUTH_NAME,
+  hom_length_intervals = hom_length_intervals,
+  interval_names = interval_names,
+  to_calculate = "pre_rec_f1",
+  output_method_name = output_method_names[2]
+)
+dat_homopolymer <- mapply(rbind, dat_homopolymer, k, SIMPLIFY=FALSE)
+
+
+
+ggplot(dat_homopolymer$class_counts,
+            aes(x=homopolymer_length_intervals, y=percent,
+                group=Measures, colour=Measures)) +
+  facet_grid(variant_type~method) +
+  theme(strip.text = element_text(size = 14)) +
+  geom_point(size=4, alpha=.5) +
+  geom_line(size=1.2, alpha=.5) +
+  # xlab("Variant within a homopolymer of length l") +
+  # xlab("Homopolymer length") +
+  # ylab("Score") +
+  theme(text = element_text(size=20)) +
+  geom_text( data=dat_homopolymer$dat_text, mapping= aes(x=x, y=y, label=label), size=5 ) +
+  guides(colour = guide_legend(override.aes = list(size = 1, shape = 11))) +
+  theme(legend.position="bottom") +
+  NULL
+```
+
+<img src="man/figures/README-unnamed-chunk-21-1.png" width="100%" />
