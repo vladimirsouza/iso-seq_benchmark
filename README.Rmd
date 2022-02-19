@@ -57,12 +57,12 @@ Generate a master table to compare and validate the variant calls from Iso-Seq d
 
 ### Files to download
 
-* [Reference_fasta](https://zenodo.org/record/5979665/files/chr21_22.fa), FASTA file with the reference sequence of chromosomes 21 and 22.
-* [ORIGINAL_BAM](https://zenodo.org/record/5979665/files/isoseq_chr21_22.bam), BAM file with Iso-Seq reads aligned to the reference.
-* [SNCR+fC_BAM](https://zenodo.org/record/5979665/files/isoseq_sncr_fc_chr21_22.bam), BAM file after manipulations with `SplitNCigarReads` and `flagCorrection` in `ORIGINAL_BAM`.
-* [DeepVariant_VCF](https://zenodo.org/record/5979665/files/deepvariant_chr21_22.vcf), VCF files with variants called from `ORIGINAL_BAM`.
-* [SNCR+fC+DeepVariant_VCF](https://zenodo.org/record/5979665/files/sncr_fc_deepvariant_chr21_22.vcf), VCF files with variants called from `SNCR+fC+DeepVariant_VCF`.
-* [Ground-truth_VCF](https://zenodo.org/record/5979665/files/ground_truth_chr21_22.vcf), VCF files with ground-truth variants called from high-coverage short-read DNA data.
+* [Reference_fasta](https://zenodo.org/record/6146582/files/chr21_22.fa), FASTA file with the reference sequence of chromosomes 21 and 22.
+* [ORIGINAL_BAM](https://zenodo.org/record/6146582/files/isoseq_chr21_22.bam), BAM file with Iso-Seq reads aligned to the reference.
+* [SNCR+fC_BAM](https://zenodo.org/record/6146582/files/isoseq_sncr_fc_chr21_22.bam), BAM file after manipulations with `SplitNCigarReads` and `flagCorrection` in `ORIGINAL_BAM`.
+* [DeepVariant_VCF](https://zenodo.org/record/6146582/files/deepvariant_chr21_22.vcf), VCF files with variants called from `ORIGINAL_BAM`.
+* [SNCR+fC+DeepVariant_VCF](https://zenodo.org/record/6146582/files/sncr_fc_deepvariant_chr21_22.vcf), VCF files with variants called from `SNCR+fC+DeepVariant_VCF`.
+* [Ground-truth_VCF](https://zenodo.org/record/6146582/files/ground_truth_chr21_22.vcf), VCF files with ground-truth variants called from high-coverage short-read DNA data.
 
 
 ### Input variables
@@ -113,6 +113,7 @@ library(dplyr)
 library(sarlacc)
 library(snakecase)
 library(ggplot2)
+library(readr)
 ```
 
 
@@ -545,6 +546,113 @@ ggplot(dat_homopolymer$class_counts,
   geom_text( data=dat_homopolymer$dat_text, mapping= aes(x=x, y=y, label=label), size=5 ) +
   guides(colour = guide_legend(override.aes = list(size = 1, shape = 11))) +
   theme(legend.position="bottom") +
+  NULL
+```
+
+
+### Compare the performance of the methods on variant calling from Allele Specific Expressed (ASE) and non-ASE genes
+
+(at the moment, there is not a ready-to-use function for this analysis)
+
+To identify ASE genes, first we use GATK's [ASEReadCounter](https://gatk.broadinstitute.org/hc/en-us/articles/360037054312-ASEReadCounter) function to get a table with read counts per allele. For the analysis presented in this README, this table can be downloaded [here](https://zenodo.org/record/6146582/files/read_counts_per_allele_chr21_22.table).
+
+Once got the table of counts, the chi-squared test is used to identify ASE sites.
+
+```{r}
+### inputs
+ALLELE_COUNTS_FILE <- "/home/vbarbo/master_table_example/ase_table_count/ase_read_count_tables/ase_read_count_all.table"
+
+
+### load allele counts
+allele_counts <- read_tsv(ALLELE_COUNTS_FILE)
+
+### add column of p-values for ase identification
+ase_chiSquare <- mapply(function(ref, alt){
+  suppressWarnings(
+    tryCatch(
+      chisq.test( c(ref, alt) ) $p.value,
+      error=function(e){NA}
+    )
+  )
+}, allele_counts$refCount, allele_counts$altCount)
+ase_chiSquare_adj <- p.adjust(ase_chiSquare, method="BH")
+allele_counts <- mutate(allele_counts, ase_chiSquare_adj)
+
+### add ase q-value to the master table
+allele_counts <- rename(allele_counts, "chrm"="contig", "pos"="position")
+allele_p <- subset(allele_counts,
+                   select=c("chrm", "pos", "refCount", "altCount",
+                            "totalCount", "otherBases", "ase_chiSquare_adj"))
+dat3 <- merge(dat1, allele_p, by=c("chrm", "pos"), all.x=TRUE, sort=FALSE)
+
+### keep only variants that are SNPs and heterozygous (according to the
+### ground truth), and have a p-value for ASE identification associated to
+### them
+dat3 <- filter(dat3, variantType_truth=="snp" & gt_truth=="0/1")
+dat3 <- filter(dat3, !is.na(ase_chiSquare_adj))
+
+### keep only variants with reasonable read coverage in the ground truth and
+### in the rna short read data
+dat3 <- filter(dat3, isoSeq_chr21_22_coverage>=10)
+dat3 <- filter(dat3, totalCount>=40)
+
+### chi-square test to test whether the proportions of FNs between ASE and
+### non-ASE variants are different
+# for DeepVariant (alone)
+k <- table(dat3$dv_classification, dat3$ase_chiSquare_adj<.05)
+k <- k[rownames(k) %in% c("FN", "TP"),]
+chisq.test(k)$p.value
+# for SNCR+fC+DeepVariant
+k <- table(dat3$sncr_fc_dv_classification, dat3$ase_chiSquare_adj<.05)
+k <- k[rownames(k) %in% c("FN", "TP"),]
+chisq.test(k)$p.value
+```
+
+Make a plot to compare the performance of the methods from ASE- and non-ASE sites.
+
+```{r}
+### create the tables from which ggplot2 makes the plots
+calcFreq <- function(d){
+  d$Ratio <- 0
+  d$Ratio[1] <- d$Freq[1] / sum(d$Freq[1:2])
+  d$Ratio[2] <- d$Freq[2] / sum(d$Freq[1:2])
+  d$Ratio[3] <- d$Freq[3] / sum(d$Freq[3:4])
+  d$Ratio[4] <- d$Freq[4] / sum(d$Freq[3:4])
+  d
+}
+# DeepVariant (alone)
+dat_ase <- table(dat3$dv_classification, dat3$ase_chiSquare_adj<.05)
+dat_ase <- dat_ase[c("FN", "TP"),]
+dat_ase <- as.data.frame(dat_ase)
+names(dat_ase) <- c("Classification", "ASE_Identification", "Frequency")
+dat_ase$ASE_Identification <- ifelse( as.logical(dat_ase$ASE_Identification),
+                                   "ASE", "Non-ASE" ) %>% factor
+dat_ase_dv <- calcFreq(dat_ase)
+# SNCR+flagCorrecion+DeepVariant
+dat_ase <- table(dat3$sncr_fc_dv_classification, dat3$ase_chiSquare_adj<.05)
+dat_ase <- dat_ase[c("FN", "TP"),]
+dat_ase <- as.data.frame(dat_ase)
+names(dat_ase) <- c("Classification", "ASE_Identification", "Frequency")
+dat_ase$ASE_Identification <- ifelse( as.logical(dat_ase$ASE_Identification),
+                                   "ASE", "Non-ASE") %>% factor
+dat_ase_dvSFc <- calcFreq(dat_ase)
+
+### put all tables together in a single table
+dat_ase_dv$method <- "DeepVariant"
+dat_ase_dvSFc$method <- "SNCR+fC+DeepVariant"
+dat_ase <- rbind(dat_ase_dv, dat_ase_dvSFc)
+k <- c("DeepVariant", "SNCR+fC+DeepVariant")
+dat_ase$method <- factor(dat_ase$method, levels=k, ordered=TRUE)
+
+### draw the plot
+ggplot(dat_ase, aes(x=ASE_Identification, y=Ratio, fill=Classification)) +
+  facet_grid(.~method) +
+  geom_bar(stat="identity", position=position_dodge()) +
+  geom_text(aes(label=round(Ratio,2)), vjust=-0.1, color="gray40",
+            position = position_dodge(0.9), size=5)+
+  theme(text = element_text(size = 20)) +
+  ylim(0,1) +
+  xlab("Allele specific expression identification") +
   NULL
 ```
 
