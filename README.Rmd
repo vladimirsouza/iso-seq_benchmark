@@ -57,6 +57,7 @@ Generate a master table to compare and validate the variant calls from Iso-Seq d
 
 ### Files to download
 
+* [Reference_fasta](https://zenodo.org/record/5979665/files/chr21_22.fa), FASTA file with the reference sequence of chromosomes 21 and 22.
 * [ORIGINAL_BAM](https://zenodo.org/record/5979665/files/isoseq_chr21_22.bam), BAM file with Iso-Seq reads aligned to the reference.
 * [SNCR+fC_BAM](https://zenodo.org/record/5979665/files/isoseq_sncr_fc_chr21_22.bam), BAM file after manipulations with `SplitNCigarReads` and `flagCorrection` in `ORIGINAL_BAM`.
 * [DeepVariant_VCF](https://zenodo.org/record/5979665/files/deepvariant_chr21_22.vcf), VCF files with variants called from `ORIGINAL_BAM`.
@@ -338,7 +339,7 @@ dat1 <- add_method_vs_truth_comparison_to_master_table(
 )
 # sncr_fc_dv
 k <- which( dat1$qual_sncrFcDv < 15 )
-dat1$in_dv_s[k] <- 0
+dat1$in_sncr_fc_dv[k] <- 0
 dat1 <- add_method_vs_truth_comparison_to_master_table(
   dat1,
   METHOD_NAMES[2],
@@ -361,9 +362,6 @@ In this section we use functions available in package `lrRNAseqBenchmark` to val
 Calculate precison measures according to different minimum Iso-Seq read coverage threshold.
 
 ```{r, fig.height=3}
-library(ggplot2)
-
-
 # define different minimum coverage threshold
 min_coverage <- c(3, 15, 40, 100)
 
