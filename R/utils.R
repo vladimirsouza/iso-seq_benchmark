@@ -775,7 +775,8 @@ calculate_precision_recall_for_n_cigar_read_count_intervarls <- function(
           snp_accur_thresholdI <- lapply(method_names_l, function(method_names_i){
             # method_names_i <- method_names_l[[1]]
             
-            k <- which( mt_intervalI$is_indel_dv_s_fc==0 )
+            k <- paste0("is_indel_", method_names_i)
+            k <- which( mt_intervalI[,k]==0 )
             k <- mt_intervalI[k,]
             calc_accuracy_measures(k, method_names_i, truth_names_l)
           })
@@ -789,7 +790,10 @@ calculate_precision_recall_for_n_cigar_read_count_intervarls <- function(
         }
         if( what_l %in% c("snps_indels", "indels") ){
           indel_accur_thresholdI <- lapply(method_names_l, function(method_names_i){
-            k <- which( mt_intervalI$is_indel_dv_s_fc==1 )
+            
+            
+            k <- paste0("is_indel_", method_names_i)
+            k <- which( mt_intervalI[,k]==1 )
             k <- mt_intervalI[k,]
             calc_accuracy_measures(k, method_names_i, truth_names_l)
           })
