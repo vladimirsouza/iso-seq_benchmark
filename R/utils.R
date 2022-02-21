@@ -1226,7 +1226,7 @@ method_homopolymer_indels <- function(input_table, first_method_name, second_met
                                       ref_fasta_seqs, min_isoseq_coverage, genotyped_alt){
   
   stopifnot( genotyped_alt %in% c("find", "same") )
-  k <- grep("dv|c3|clair3", second_method_name, ignore.case=TRUE)
+  k <- grep("dv|deepvariant|c3|clair3", second_method_name, ignore.case=TRUE)
   if( identical(k,1L) ){
     if(genotyped_alt!="find"){
       message("It looks like the second method is DeepVariant or Clair3, but genotyped_alt is not 'find'.")
