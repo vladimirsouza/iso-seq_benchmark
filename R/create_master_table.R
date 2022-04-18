@@ -133,6 +133,67 @@ get_splice_sites_info <- function(input_bam, threads){
 
 
 
+#' Get all splice-sites and read-end positions of a BAM files
+#'
+#' Similar to \code{get_splice_sites_info}, but also count read ends.
+#'
+#' This function may take several hours to run.
+#'
+#' @param input_bam The input BAM file to extract splice site positions from.
+#' @param threads Number of threads.
+#'
+#' @return A 2-element list (`splice_site`, and `transcript_end`). Element
+#'   `splice_site` should contain the same returned by \code{get_splice_sites_info}.
+#'   Element `transcript_end` counts of read ends (start or final/end site of the read).
+#'
+#' @importFrom GenomicAlignments extractAlignmentRangesOnReference cigar start
+#'   end seqnames
+#' @importFrom BiocParallel MulticoreParam bpmapply
+#' @importFrom utils head
+#' @importFrom rlang .data
+#' @importFrom dplyr group_by tally
+#'
+#' @export
+get_splice_sites_info2 <- function(input_bam, threads){
+
+  ### find splice sites and read ends
+  ss <- extractAlignmentRangesOnReference( cigar(input_bam), start(input_bam) )
+  
+  chrm_name <- as.vector( seqnames(input_bam) )
+  multicoreParam <- MulticoreParam(workers = threads)
+  ss <- bpmapply(function(ss_i, chrm_name_i){
+    ss_start <- start(ss_i)
+    ss_end <- end(ss_i)
+    is_acceptor_site <- rep( c(1L:0L), c( length(ss_start), length(ss_end) ) )
+    is_acceptor_site[ c(1, length(is_acceptor_site)) ] <- NA
+    is_trans_left_end <- numeric( length(is_acceptor_site) )
+    is_trans_left_end[1] <- 1
+    data.frame(chrm= chrm_name_i, pos= c(ss_start, ss_end),
+               is_acceptor_site, is_trans_left_end)
+  }, ss, chrm_name, SIMPLIFY=FALSE, BPPARAM=multicoreParam)
+  
+  ss <- do.call(rbind, ss)
+  if( is.null(ss) )
+    return(NULL)
+  
+  ### separate splice sites and read ends
+  k <- ifelse( is.na(ss$is_acceptor_site), "transcript_end", "splice_site")
+  ss <- split(ss, k)
+  
+  ### count them per site
+  ss$transcript_end <- group_by(ss$transcript_end,
+                                .data$chrm, .data$pos, .data$is_trans_left_end)
+  ss$transcript_end <- tally(ss$transcript_end)
+  
+  ss$splice_site <- group_by(ss$splice_site,
+                             .data$chrm, .data$pos, .data$is_acceptor_site)
+  ss$splice_site <- tally(ss$splice_site)
+  
+  ss
+}
+
+
+
 
 
 #' Add columns about spice sites to a master table
