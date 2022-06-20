@@ -99,11 +99,12 @@ initiate_master_table <- function(..., method_names) {
 #' @importFrom BiocParallel MulticoreParam bpmapply
 #' @importFrom utils head
 #' @importFrom rlang .data
-#' @import dplyr
+#' @importFrom dplyr group_by
+#' @importFrom dplyr tally
 #'
 #' @export
 get_splice_sites_info <- function(input_bam, threads){
-  ss <- extractAlignmentRangesOnReference( cigar(input_bam), start(input_bam),  )
+  ss <- extractAlignmentRangesOnReference( cigar(input_bam), start(input_bam) )
 
   # add chromossome name
   chrm_name <- as.vector( seqnames(input_bam) )
@@ -122,11 +123,14 @@ get_splice_sites_info <- function(input_bam, threads){
   }, ss, chrm_name, BPPARAM=multicoreParam)
 
   ss <- do.call(rbind, ss)
+  
   if( is.null(ss) )
     return(NULL)
-  ss <- group_by(ss, .data$chrm, .data$pos, .data$is_acceptor_site) %>%
-    tally
-
+  
+  ss <- tally(
+    group_by(ss, .data$chrm, .data$pos, .data$is_acceptor_site)
+  )
+  
   ss
 }
 
