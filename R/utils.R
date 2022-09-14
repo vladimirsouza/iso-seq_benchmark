@@ -775,7 +775,7 @@ calculate_precision_recall_for_multi_master_tables2 <- function(
             k <- paste0("is_indel_", method_names_i)
             k <- which(mt_thresholdI[,k] == 1)
             k <- mt_thresholdI[k,]
-            calc_accuracy_measures(k, method_names_i, truth_names_l)
+            res <- calc_accuracy_measures(k, method_names_i, truth_names_l)
             
             in_truth <- paste0("in_", truth_names_l)
             nTrueVar <- sum( k[,in_truth] == 1 )
@@ -791,7 +791,7 @@ calculate_precision_recall_for_multi_master_tables2 <- function(
         if( what_l == "overall" ){
           overall_accur_thresholdI <- lapply(method_names_l, function(method_names_i){
             k <- mt_thresholdI
-            calc_accuracy_measures(k, method_names_i, truth_names_l)
+            res <- calc_accuracy_measures(k, method_names_i, truth_names_l)
             
             in_truth <- paste0("in_", truth_names_l)
             nTrueVar <- sum( k[,in_truth] == 1 )
