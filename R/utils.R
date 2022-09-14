@@ -958,6 +958,12 @@ calculate_precision_recall_for_n_cigar_read_count_intervarls <- function(
     
     stopifnot( is.vector(what) & !is.list(what) )
     stopifnot( length(what)==1 )
+    
+    method_names <- list(method_names)
+    output_method_names <- list(output_method_names)
+    n_cigar_read_percent_intervals <- list(n_cigar_read_percent_intervals)
+    
+    mt_len <- 1
   }else{
     mt_len <- length(master_tables)
     
@@ -1021,15 +1027,17 @@ calculate_precision_recall_for_n_cigar_read_count_intervarls <- function(
     )
   }
   
-  if( is.vector(what) & !is.list(what) ){
-    if( length(what) == 1 ){
-      what <- rep(what, mt_len)
-    }else{
-      stopifnot( length(what) == length(what) )
-    }
-  }else{
-    stop("Check argument what")
-  }
+  
+  ### any check for argument `what`?
+  # if( is.vector(what) & !is.list(what) ){
+  #   if( length(what) == 1 ){
+  #     what <- rep(what, mt_len)
+  #   }else{
+  #     stopifnot( length(what) == length(what) )
+  #   }
+  # }else{
+  #   stop("Check argument what")
+  # }
   
   
   
