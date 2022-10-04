@@ -880,6 +880,292 @@ calculate_precision_recall_for_multi_master_tables2 <- function(
 
 
 
+#' Calculate accuracy measures, per read coverage ranges, for multiple master
+#'   tables, and output number of true variant per range
+#' 
+#' This is an alternative function for `calculate_precision_recall_for_multi_master_tables2`.
+#'   It differs from the latter by using ranges of read coverage, i.e., there are
+#'   maximums. 
+#'
+#' @param ... Master tables.
+#' @param experiment_names Vector of strings. Name of the experiments in the same 
+#'   order of the master tables.
+#' @param method_names Vector or list of strings. Names of the methods to compare.
+#'   If all experiments compare the same methods, `method_names` can be a single
+#'   vector. Otherwise, `method_names` must be a list, in which each element 
+#'   specifies the names of the methods to compare for each experiment.
+#' @param output_method_names NULL (default), or a vector or a list of strings.
+#'   Names of the methods to output. 
+#' @param data_names Vector or list of strings.
+#' @param truth_names Vector or list of strings.
+#' @param coverage_ranges Data.frame of two columns. The first column stores the
+#'   begining of the ranges and the second the end.
+#' @param what Vector or list of strings.
+#'
+#' @return A data.frame.
+#' @export
+calculate_precision_recall_for_coverage_ranges <- function(
+  ...,
+  experiment_names,
+  method_names,
+  output_method_names=NULL,
+  data_names,
+  truth_names,
+  coverage_ranges,
+  what
+){
+  
+  master_tables <- list(...)
+  
+  stopifnot( length(experiment_names) == length(master_tables) )
+  
+  if( length(master_tables) == 1 ){
+    stopifnot( is.vector(method_names) & !is.list(method_names) )
+    
+    if( !is.null(output_method_names) ){
+      stopifnot( is.vector(output_method_names) & !is.list(output_method_names) )
+    }
+    
+    stopifnot( is.vector(data_names) & !is.list(data_names))
+    stopifnot( length(data_names)==1 )
+    
+    stopifnot( is.vector(truth_names) & !is.list(truth_names) )
+    stopifnot( length(truth_names)==1 )
+    
+    stopifnot( is.data.frame(coverage_ranges) )
+    
+    stopifnot( is.vector(what) & !is.list(what) )
+    stopifnot( length(what)==1 )
+    
+    method_names <- list(method_names)
+    output_method_names <- list(output_method_names)
+    coverage_ranges <- list(coverage_ranges)
+    
+    mt_len <- 1
+  }else{
+    mt_len <- length(master_tables)
+    
+    if( is.null(output_method_names) ){
+      output_method_names <- rep( list(output_method_names), mt_len )
+    }else{
+      if( is.vector(output_method_names) & !is.list(output_method_names) ){
+        stopifnot( length(output_method_names) == length(method_names) )
+        output_method_names <- rep( list(output_method_names), mt_len )
+      }else{
+        if( is.list(output_method_names) ){
+          stopifnot( length(output_method_names) == length(master_tables) )
+        }else{
+          stop("Check argument output_method_names")
+        }
+      }
+    }
+    
+    if( is.vector(method_names) & !is.list(method_names) ){
+      method_names <- rep( list(method_names), mt_len )
+    }else{
+      if( is.list(method_names) ){
+        stopifnot( length(method_names) == length(master_tables) )
+      }else{
+        stop("Check argument method_names")
+      }
+    }
+    
+    if( is.vector(data_names) & !is.list(data_names) ){
+      if( length(data_names) == 1 ){
+        data_names <- rep(data_names, mt_len)
+      }else{
+        stopifnot( length(data_names) == length(data_names) )
+      }
+    }else{
+      stop("Check argument data_names")
+    }
+    
+    if( is.vector(truth_names) & !is.list(truth_names) ){
+      if( length(truth_names) == 1 ){
+        truth_names <- rep(truth_names, mt_len)
+      }else{
+        stopifnot( length(truth_names) == length(truth_names) )
+      }
+    }else{
+      stop("Check argument truth_names")
+    }
+    
+    if( is.data.frame(coverage_ranges) ){
+      coverage_ranges <- rep( list(coverage_ranges), mt_len )
+    }else{
+      if( is.list(coverage_ranges) ){
+        stopifnot( length(coverage_ranges) == length(master_tables) )
+      }else{
+        stop("Check argument coverage_ranges")
+      }
+    }
+  }
+  
+  if( is.vector(what) & !is.list(what) ){
+    if( length(what) == 1 ){
+      what <- rep(what, mt_len)
+    }else{
+      stopifnot( length(what) == length(what) )
+    }
+  }else{
+    stop("Check argument what")
+  }
+  
+  
+  
+  dat_mts <- mapply(
+    function(master_tables_l,
+             method_names_l,
+             output_method_names_l,
+             data_names_l,
+             truth_names_l,
+             coverage_ranges_l,
+             what_l,
+             experiment_names_l){
+      
+      # master_tables_l <- master_tables[[1]]
+      # method_names_l <- method_names[[1]]
+      # output_method_names_l <- output_method_names[[1]]
+      # data_names_l <- data_names[[1]]
+      # truth_names_l <- truth_names[[1]]
+      # coverage_ranges_l <- coverage_ranges[[1]]
+      # what_l <- what[[1]]
+      # experiment_names_l <- experiment_names[[1]]
+      
+      if( !any(what_l %in% c("snps_indels", "snps", "indels", "overall")) ){
+        stop("`what` argument must be either \"snps_indels\", \"snps\", \"indels\", or \"overall\"")
+      }
+      
+      range_indexes <- seq_len( nrow(coverage_ranges_l) )
+      mt_thresholdI_methodJ <- lapply(range_indexes, function(range_index_i) {
+        # range_index_i <- range_indexes[[1]]
+        
+        threshold_i <- coverage_ranges_l[range_index_i,]
+        
+        k <- master_tables_l[ ,paste0(data_names_l, "_coverage") ]
+        k <- k >= threshold_i$s & k <= threshold_i$e
+        mt_thresholdI <- master_tables_l[k,]
+        
+        if( what_l %in% c("snps_indels", "snps") ){
+          snp_accur_thresholdI <- lapply(method_names_l, function(method_names_i){
+            # method_names_i <- method_names_l[[1]]
+            
+            k <- paste0("is_indel_", method_names_i)
+            k <- which(mt_thresholdI[,k] == 0)
+            k <- mt_thresholdI[k,]
+            res <- calc_accuracy_measures(k, method_names_i, truth_names_l)
+            
+            in_truth <- paste0("in_", truth_names_l)
+            nTrueVar <- sum( k[,in_truth] == 1 )
+            c(res, nTrueVariants=nTrueVar)
+          })
+          snp_accur_thresholdI <- do.call(rbind, snp_accur_thresholdI)
+          snp_accur_thresholdI <- data.frame(snp_accur_thresholdI)
+          
+          threshold_i <- paste( as.numeric(threshold_i), collapse="--")
+          snp_accur_thresholdI <- cbind(snp_accur_thresholdI,
+                                        variant="snps",
+                                        method=method_names_l,
+                                        coverage_ranges=threshold_i)
+        }
+        if( what_l %in% c("snps_indels", "indels") ){
+          indel_accur_thresholdI <- lapply(method_names_l, function(method_names_i){
+            k <- paste0("is_indel_", method_names_i)
+            k <- which(mt_thresholdI[,k] == 1)
+            k <- mt_thresholdI[k,]
+            res <- calc_accuracy_measures(k, method_names_i, truth_names_l)
+            
+            in_truth <- paste0("in_", truth_names_l)
+            nTrueVar <- sum( k[,in_truth] == 1 )
+            c(res, nTrueVariants=nTrueVar)
+          })
+          indel_accur_thresholdI <- do.call(rbind, indel_accur_thresholdI)
+          indel_accur_thresholdI <- data.frame(indel_accur_thresholdI)
+          
+          indel_accur_thresholdI <- cbind(indel_accur_thresholdI,
+                                          variant="indels",
+                                          method=method_names_l,
+                                          coverage_ranges=threshold_i)
+        }
+        if( what_l == "overall" ){
+          overall_accur_thresholdI <- lapply(method_names_l, function(method_names_i){
+            k <- mt_thresholdI
+            res <- calc_accuracy_measures(k, method_names_i, truth_names_l)
+            
+            in_truth <- paste0("in_", truth_names_l)
+            nTrueVar <- sum( k[,in_truth] == 1 )
+            c(res, nTrueVariants=nTrueVar)
+          })
+          overall_accur_thresholdI <- do.call(rbind, overall_accur_thresholdI)
+          overall_accur_thresholdI <- data.frame(overall_accur_thresholdI)
+          
+          overall_accur_thresholdI <- cbind(overall_accur_thresholdI,
+                                            variant="overall",
+                                            method=method_names_l,
+                                            coverage_ranges=threshold_i)
+        }
+        
+        accur_thresholdI <- switch(
+          what_l, 
+          "snps_indels"={
+            rbind(snp_accur_thresholdI, indel_accur_thresholdI)
+          },
+          "snps"={
+            snp_accur_thresholdI
+          },
+          "indels"={
+            indel_accur_thresholdI
+          },
+          "overall"={
+            overall_accur_thresholdI
+          }
+        )
+      })
+      
+      dat <- do.call(rbind, mt_thresholdI_methodJ) 
+      names(dat) [names(dat) == "sensitivity"] <- "recall"
+      dat$variant <- factor(dat$variant)
+      dat$method <- factor(dat$method, levels=method_names_l)
+      
+      coverage_ranges_l <- coverage_ranges_l [ order(coverage_ranges_l$s) , ]
+      range_levels <- apply(coverage_ranges_l, 1, paste, collapse="--") 
+      dat$coverage_ranges <- factor(dat$coverage_ranges,
+                                        levels=range_levels,
+                                        ordered=TRUE)
+      if( !is.null(output_method_names_l) ){
+        if( length(method_names_l) != length(output_method_names_l) ){
+          stop("The lengths of `method_names` and `output_method_names` must be equal.")
+        }
+        stopifnot( identical(method_names_l, levels(dat$method)) )
+        levels(dat$method) <- output_method_names_l
+      }
+      names(dat) [names(dat) == "coverage_ranges"] <- "Coverage Ranges"
+      
+      dat <- cbind(dat, experiment=experiment_names_l)
+      
+    },
+    master_tables,
+    method_names,
+    output_method_names,
+    data_names,
+    truth_names,
+    coverage_ranges,
+    what,
+    experiment_names,
+    SIMPLIFY=FALSE
+  )
+  dat_mts <- do.call(rbind, dat_mts)
+  
+  dat_mts
+}
+
+
+
+
+
+
+
+
 
 #' For each N-cigar-read-count interval, calculate accuracy measures for 
 #'   multiple master tables
