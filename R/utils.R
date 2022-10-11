@@ -1568,7 +1568,7 @@ add_format_tag_from_vcf <- function(input_table, method_name, tag, vcf_file){
   names(x) <- c("chrm", "pos", col_name)
   x$pos <- as.integer(x$pos)
   res <- left_join(input_table, x)
-  stopifnot( identical(input_table[,1:2], res[,1:2]) )
+  stopifnot( all(input_table[,1:2] == res[,1:2]) )
   
   res
 }
