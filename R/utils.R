@@ -2323,7 +2323,7 @@ splice_junction_analysis_table <- function(..., experiment_names, truth_names, m
       c("No", "Yes"),
       length(method_names)*length(experiment_names)
     ),
-    y=1.10*max(acc_sj$Score),
+    y=1.10*max(acc_sj$Score, na.rm=TRUE),
     Measures=NA
   )
   
