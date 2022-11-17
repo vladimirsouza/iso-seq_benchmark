@@ -2136,7 +2136,11 @@ make_homopolymer_table_to_plot <- function(input_hom_table, variant_type,
                                  input_hom_table$homopolymer_length_intervals)
   k <- lapply(input_hom_table_split, function(x){
     y <- calc_accuracy_measures(x, method_name, truth_name)
-    c(y, total_count=nrow(x))
+    
+    # count covered true variants
+    k <- paste0(method_name, "_classification")
+    k <- sum( x[,k] %in% c("TP", "FN") )
+    c(y, total_count=k)
   })
   k <- do.call(rbind, k)
   k <- data.frame(k)
@@ -2272,7 +2276,11 @@ splice_junction_analysis_table <- function(..., experiment_names, truth_names, m
       k <- which(k)
       data_tables_i <- data_tables_i_ori[k,]
       
-      env[["n_methods"]] <- c( env[["n_methods"]], paste0("n=", table(data_tables_i$is_near_ss)) )
+      # number of true variants covered by iso-seq near to and far from splice junctions
+      k <- paste0("in_", truth_names_i)
+      k <- split( data_tables_i[,k], data_tables_i$is_near_ss == 1 )
+      k <- sapply(k, sum)
+      env[["n_methods"]] <- c( env[["n_methods"]], paste0("n=", k) )
       
       k <- split(data_tables_i, data_tables_i$is_near_ss)
       k <- sapply(k, calc_accuracy_measures, method_name=method_names_i, truth_name=truth_names_i)
@@ -2285,7 +2293,7 @@ splice_junction_analysis_table <- function(..., experiment_names, truth_names, m
     
     acc_methods$is_near <- recode(acc_methods$is_near, "0"="No", "1"="Yes")
     acc_methods$Measures <- recode(acc_methods$Measures, "precision"="Precision",
-                                          "sensitivity"="Recall", "f1Score"="F1-score")
+                                   "sensitivity"="Recall", "f1Score"="F1-score")
     acc_methods$Method <- factor(acc_methods$Method, levels=output_method_names, ordered=TRUE)
     acc_methods$experiment <- experiment_names_i
     
@@ -2329,3 +2337,5 @@ splice_junction_analysis_table <- function(..., experiment_names, truth_names, m
   
   list(acc_sj=acc_sj, n_text=n_text)
 }
+
+
