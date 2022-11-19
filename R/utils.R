@@ -2241,6 +2241,14 @@ splice_junction_analysis_table <- function(..., experiment_names, truth_names, m
     k <- data_tables_i[,dataset_ncrNum_column] == 0
     data_tables_i <- data_tables_i[k,]
     
+    ### filter out variant that are not in the ground truth and not called by any method
+    in_wtc11_truth <- paste0("in_", truth_names_i)
+    in_wtc11_methods <- paste0("in_", method_names)
+    k <- data_tables_i[ ,c(in_wtc11_methods, in_wtc11_truth) ]
+    k <- apply(k, 1, function(x) all(x==0))
+    data_tables_i <- data_tables_i[!k,]
+    dim(data_tables_i)
+    
     ### get the distance of the most frequent variant
     data_tables_i <- mutate(data_tables_i, ss_dist_of_the_most_freq={
       mapply(function(num, dis){
