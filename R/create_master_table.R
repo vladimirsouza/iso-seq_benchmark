@@ -13,25 +13,29 @@
 #'
 #' @return A data.frame.
 #'
-#' @importFrom utils read.table
 #' @importFrom stats setNames
 #' @importFrom rlang .data
+#' @importFrom vcfR read.vcfR
 #' @import dplyr
 #'
 #' @export
 initiate_master_table <- function(..., method_names) {
   ### load PASS variants
   vcf_file_list <- list(...)
-
+  
   if( length(vcf_file_list) != length(method_names) ) {
     stop("Length of method_names must be the same as the number of input VCF files.")
   }
-
+  
   vcfs <- lapply(vcf_file_list, function(vcf_file) {
-    vcf <- read.table(vcf_file)
-    vcf[ vcf[[7]] == "PASS", ]
+    vcf <- read.vcfR(vcf_file)
+    vcf <- cbind(vcf@fix, vcf@gt)
+    vcf <- as.data.frame(vcf)
+    vcf$POS <- as.integer(vcf$POS)
+    vcf$QUAL <- as.numeric(vcf$QUAL)
+    vcf[ vcf$FILTER=="PASS", ]
   })
-
+  
   ### split VCFs by chromosomes
   present_chromosomes <- bind_rows(vcfs) %>%
     pull(1) %>%
@@ -41,7 +45,7 @@ initiate_master_table <- function(..., method_names) {
       vcf[ vcf[,1]==pchrm, ]
     })
   })
-
+  
   ### which variants are contained in each vcf and what are ther DP tag (from VCF file)
   master_table <- apply(vcfs, 1, function(vcfs_chrmI) {
     all_positions <- bind_rows(vcfs_chrmI) %>%
@@ -51,7 +55,7 @@ initiate_master_table <- function(..., method_names) {
     in_chrmI_methodJ <- sapply(vcfs_chrmI, function(vcf_chrmI_methodJ) {
       1 * ( all_positions %in% vcf_chrmI_methodJ[[2]] )
     })
-
+    
     dv_chrmI_methodJ <- sapply(vcfs_chrmI, function(vcf_chrmI_methodJ) {
       res <- strsplit(vcf_chrmI_methodJ[[10]], ":") %>%
         sapply("[", 3) %>%
@@ -59,7 +63,7 @@ initiate_master_table <- function(..., method_names) {
         setNames(vcf_chrmI_methodJ[[2]])
       res <- unname( res[ as.character(all_positions) ] )
     })
-
+    
     data.frame(pos=all_positions,
                in_chrmI_methodJ,
                dv_chrmI_methodJ)
@@ -69,13 +73,14 @@ initiate_master_table <- function(..., method_names) {
   }, present_chromosomes, master_table, SIMPLIFY=FALSE)
   
   master_table <- bind_rows(master_table)
-
+  
   method_names <- c( paste0("in_", method_names),
                      paste0("dp_", method_names) )
   names(master_table)[-(1:2)] <- method_names
-
+  
   master_table
 }
+
 
 
 
